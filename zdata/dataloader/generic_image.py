@@ -227,10 +227,10 @@ class Net(BaseNet):
             data = im
         elif ext in ('pkl', 'p'):
             with open(fn, 'rb') as f:
-                data = pickle.load(fn)
+                data = pickle.load(f)
         elif ext == "json":
             with open(fn, 'r') as f:
-                data = json.load(fn)
+                data = json.load(f)
         elif ext == "mat":
             data = scipy.io.loadmat(fn)
         else:
