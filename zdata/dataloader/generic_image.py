@@ -217,6 +217,7 @@ class Net(BaseNet):
     @classmethod
     def _load_file(cls, fn):
         _, ext = os.path.splitext(fn)
+        ext = ext[1:]
         if ext in cls._img_ext_list:
             im = cv2.imread(fn)
             if len(im.shape) == 2:
@@ -233,7 +234,7 @@ class Net(BaseNet):
         elif ext == "mat":
             data = scipy.io.loadmat(fn)
         else:
-            raise ValueError("Unrecognized extesion")
+            raise ValueError("Unrecognized extension")
         return data
 
     def chosen_id_to_image_id(self, chosen_id):
