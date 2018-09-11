@@ -1,4 +1,4 @@
-from zdatautils.dataloader.generic_multithread import Net as BaseNet
+from zdata.dataloader.generic_multithread import Net as BaseNet
 import os
 
 import re
@@ -8,6 +8,8 @@ import numpy as np
 import threading
 
 import cv2
+
+import pickle, json, scipy.io
 
 from glob import glob
 
@@ -195,17 +197,44 @@ class Net(BaseNet):
     def subset_name(self):
         return self._subset_name
 
-    @staticmethod
-    def _complete_image_ext(bare_fn):
+    _img_ext_list = [
+        'png', 'PNG', "jpg", 'JPG', "jpeg", 'JPEG'
+    ]
+    _general_ext_list = [
+        "pkl", 'p', 'json', 'mat'
+    ]
+
+    @classmethod
+    def _complete_image_ext(cls, bare_fn):
         bare_fn = re.sub(r':[0-9]+$',r'', bare_fn)   # remove postfix
-        ext_list = [
-            'png', 'PNG', "jpg", 'JPG', "jpeg", 'JPEG'
-        ]
+        ext_list = cls._img_ext_list + cls._general_ext_list
         for ext in ext_list:
             fn = bare_fn + "." + ext
             if os.path.exists(fn):
                 return fn
         raise FileExistsError("No image file is found")
+
+    @classmethod
+    def _load_file(cls, fn):
+        _, ext = os.path.splitext(fn)
+        if ext in cls._img_ext_list:
+            im = cv2.imread(fn)
+            if len(im.shape) == 2:
+                im = np.reshape(im, im.shape + (1,))
+            elif im.shape[2] == 3:
+                im = cv2.cvtColor(im, code=cv2.COLOR_BGR2RGB)
+            data = im
+        elif ext in ('pkl', 'p'):
+            with open(fn, 'rb') as f:
+                data = pickle.load(fn)
+        elif ext == "json":
+            with open(fn, 'r') as f:
+                data = json.load(fn)
+        elif ext == "mat":
+            data = scipy.io.loadmat(fn)
+        else:
+            raise ValueError("Unrecognized extesion")
+        return data
 
     def chosen_id_to_image_id(self, chosen_id):
         return self._chosen_id_to_image_id[chosen_id]
@@ -228,12 +257,8 @@ class Net(BaseNet):
                 self._get_image_subpath_from_field_subpath(image_fn, i)
             ))
             image_fn_i = self._complete_image_ext(image_fn_i)
-            im = cv2.imread(image_fn_i)
-            if len(im.shape) == 2:
-                im = np.reshape(im, im.shape + (1,))
-            elif im.shape[2] == 3:
-                im = cv2.cvtColor(im, code=cv2.COLOR_BGR2RGB)
-            outputs.append([im])
+            data = self._load_file(image_fn_i)
+            outputs.append([data])
 
         # regular aux data, require .read_aux_*(aux_path)
         for a in self._aux_list:
