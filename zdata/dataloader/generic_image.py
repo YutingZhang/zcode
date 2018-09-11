@@ -1,4 +1,4 @@
-from zdatautils.dataloader.generic_multithread import Net as BaseNet
+from zdata.dataloader.generic_multithread import Net as BaseNet
 import os
 
 import re
