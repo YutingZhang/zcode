@@ -1,7 +1,7 @@
 from collections import namedtuple, Iterable, Sequence
 from copy import copy
 from easydict import EasyDict as edict
-from py_utils import value_class_for_with, dummy_class_for_with
+from zutils.py_utils import value_class_for_with, dummy_class_for_with
 
 
 class OptionStruct_UnsetCacheNone:
