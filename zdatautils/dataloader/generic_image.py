@@ -1,4 +1,4 @@
-from dataloader.generic_multithread import Net as BaseNet
+from zdatautils.dataloader.generic_multithread import Net as BaseNet
 import os
 
 import re
@@ -11,8 +11,8 @@ import cv2
 
 from glob import glob
 
-from zpyutils.vid_seg import VideoSegReader
-from zpyutils.option_struct import OptionDef
+from zutils.vid_seg import VideoSegReader
+from zutils.option_struct import OptionDef
 
 import math
 

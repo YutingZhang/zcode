@@ -5,7 +5,7 @@ import random
 from multiprocessing.dummy import Pool
 from multiprocessing import cpu_count
 import math
-from dataloader.utils import *
+from zdatautils.dataloader.utils import *
 
 
 class AbsFieldDataLoader:

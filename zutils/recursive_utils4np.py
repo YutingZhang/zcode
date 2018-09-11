@@ -1,4 +1,4 @@
-import recursive_utils as ru
+import zutils.recursive_utils as ru
 import numpy as np
 
 

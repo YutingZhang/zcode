@@ -1,5 +1,5 @@
-from dataloader.generic_multithread import DataTransform
-from dataloader.utils import *
+from zdatautils.dataloader.generic_multithread import DataTransform
+from zdatautils.dataloader.utils import *
 import dataloader._image_transform as _image_transform
 import numpy as np
 from copy import copy, deepcopy

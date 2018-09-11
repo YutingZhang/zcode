@@ -1,4 +1,4 @@
-from zpyutils.py_utils import link_with_instance
+from zutils.py_utils import link_with_instance
 
 
 class Net:
