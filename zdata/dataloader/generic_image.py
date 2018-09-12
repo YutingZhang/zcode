@@ -26,7 +26,8 @@ if mxnet_spec is None:
     _imread = cv2.imread
 else:
     import mxnet as mx
-    _imread = mx.image.imread
+    def _imread(*args, **kwargs):
+        return mx.image.imread(*args, **kwargs).asnumpy()
 # -----------------------------------------
 
 
