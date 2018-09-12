@@ -19,6 +19,17 @@ from zutils.option_struct import OptionDef
 import math
 
 
+# use mxnet imread if possible ------------
+import importlib.util
+mxnet_spec = importlib.util.find_spec("mxnet")
+if mxnet_spec is None:
+    _imread = cv2.imread
+else:
+    import mxnet as mx
+    _imread = mx.image.imread
+# -----------------------------------------
+
+
 class NetOptionDef(OptionDef):
 
     @staticmethod
@@ -219,7 +230,7 @@ class Net(BaseNet):
         _, ext = os.path.splitext(fn)
         ext = ext[1:]
         if ext in cls._img_ext_list:
-            im = cv2.imread(fn)
+            im = _imread(fn)
             if len(im.shape) == 2:
                 im = np.reshape(im, im.shape + (1,))
             elif im.shape[2] == 3:
