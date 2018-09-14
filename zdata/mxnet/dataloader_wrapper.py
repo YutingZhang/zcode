@@ -166,7 +166,7 @@ class MXDataIterFromLoader(mx.io.DataIter):
             ot = _output_types[i]
             if isinstance(ot, str):
                 ot = getattr(np, ot)
-            d_i = tensor_vstack(d[i], dtype=ot)
+            d_i = np.array(tensor_vstack(d[i]), dtype=ot)
             if pad:
                 padding_i = np.tile(d_i[:1], [pad] + [1] * (d_i.ndim-1))
                 d_i = np.concatenate(
