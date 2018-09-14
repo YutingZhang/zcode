@@ -451,6 +451,14 @@ class IntervalSearch:
 
         return mid, (item-left_val)  # (interval_id, loc in interval)
 
+    def __len__(self):
+        return len(self._sp)
+
+    @property
+    def leftmost_val(self):
+        return self._leftmost_val
+
+
 
 # -------------------------------------------------------------------------
 
