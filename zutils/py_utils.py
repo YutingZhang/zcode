@@ -18,7 +18,7 @@ def time_stamp_str():
     return datetime.datetime.now().strftime('%Y-%m/%d-%H:%M:%S.%f')
 
 
-class Stopwatch(OrderedDict):
+class StopWatch(OrderedDict):
 
     def __init__(self, prefix=""):
         super().__init__([(0, time.time())])
