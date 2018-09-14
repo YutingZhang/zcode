@@ -18,6 +18,39 @@ def time_stamp_str():
     return datetime.datetime.now().strftime('%Y-%m/%d-%H:%M:%S.%f')
 
 
+class Stopwatch(OrderedDict):
+
+    def __init__(self, prefix=""):
+        super().__init__([(0, time.time())])
+        self._prefix = prefix
+        self._lap_n = 0
+
+    def lap(self, tag=None):
+        self._lap_n += 1
+        if tag is None:
+            tag = self._lap_n
+        self[tag]=time.time()
+        return tag
+
+    def print(self, tag):
+        t0 = self[0]
+        t2 = self[tag]
+        all_tags = list(self.keys())
+        ind2 = all_tags.index(tag)
+        if ind2 > 0:
+            t1 = self[all_tags[ind2-1]]
+        else:
+            t1 = t2
+        print("%s: %g sec (diff: %g)" % (self._prefix + tag, t2 - t0, t2 - t1))
+
+    def print_all(self):
+        t0 = self[0]
+        t1 = self[0]
+        for tag, t2 in self:
+            print("%s: %g sec (diff: %g)" % (self._prefix + tag, t2 - t0, t2 - t1))
+            t1 = t2
+
+
 def convert2set(a):
     if isinstance(a, set):
         return a
