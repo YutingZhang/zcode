@@ -35,8 +35,11 @@ class StopWatch(OrderedDict):
     def lap_and_print(self, tag=None):
         self.print(self.lap())
 
-    def print(self, tag):
+    def _print(self, tag, t1, t2):
         t0 = self[0]
+        print("%s: %g sec (diff: %g)" % (self._prefix + str(tag), t2 - t0, t2 - t1))
+
+    def print(self, tag):
         t2 = self[tag]
         all_tags = list(self.keys())
         ind2 = all_tags.index(tag)
@@ -44,13 +47,12 @@ class StopWatch(OrderedDict):
             t1 = self[all_tags[ind2-1]]
         else:
             t1 = t2
-        print("%s: %g sec (diff: %g)" % (self._prefix + tag, t2 - t0, t2 - t1))
+        self._print(tag, t1, t2)
 
     def print_all(self):
-        t0 = self[0]
         t1 = self[0]
         for tag, t2 in self:
-            print("%s: %g sec (diff: %g)" % (self._prefix + tag, t2 - t0, t2 - t1))
+            self._print(tag, t1, t2)
             t1 = t2
 
 
