@@ -57,7 +57,7 @@ class MXDataIterFromLoader(mx.io.DataIter):
         ]
 
         def _fill_batch_size(_key_size_p):
-            for _i in range(_key_size_p):
+            for _i in range(len(_key_size_p)):
                 _k, _s = _key_size_p[_i]
                 if _s is not None and _s:
                     assert _s[0] is None or _s[0] == self._batch_size, "conflicted batch_size"
