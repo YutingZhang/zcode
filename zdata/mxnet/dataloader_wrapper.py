@@ -73,11 +73,14 @@ class MXDataIterFromLoader(mx.io.DataIter):
         # status variable
         self._data = None
         self._label = None
+        self._pad = None
 
+        # prefetch if needed
+        self._is_data_cached = False
         if self._unknown_data_size or self._unknown_label_size:
             # get first batch to fill in provide_data and provide_label
             self.next()
-            self.reset()
+            self._is_data_cached = True
 
     def _index_in_dataloader_fields(self, field_names):
         if isinstance(field_names, str):
@@ -129,7 +132,17 @@ class MXDataIterFromLoader(mx.io.DataIter):
     def __next__(self):
         return self.next()
 
+    def current_batch(self):
+        return mx.io.DataBatch(
+            data=self._data, label=self._label, pad=self._pad,
+            provide_data=self.provide_data, provide_label=self.provide_label
+        )
+
     def next(self):
+
+        if self._is_data_cached:
+            self._is_data_cached = False
+            return self.current_batch()
 
         if self.eof:
             raise StopIteration
@@ -162,10 +175,9 @@ class MXDataIterFromLoader(mx.io.DataIter):
 
         self._data = [d[i] for i in self._data_field_indexes]
         self._label = [d[i] for i in self._label_field_indexes]
+        self._pad = pad
 
-        mx.io.DataBatch(
-            data=self._data, label=self._label, pad=pad,
-            provide_data=self.provide_data, provide_label=self.provide_label
-        )
+        return self.current_batch()
+
 
 
