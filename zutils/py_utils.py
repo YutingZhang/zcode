@@ -29,6 +29,8 @@ class StopWatch(OrderedDict):
         self._lap_n += 1
         if tag is None:
             tag = self._lap_n
+        if tag in self:
+            del self[tag]
         self[tag] = time.time()
         return tag
 

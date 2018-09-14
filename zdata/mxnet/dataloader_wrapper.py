@@ -1,5 +1,3 @@
-# UNFINISHED
-
 import mxnet as mx
 import numpy as np
 from zutils.np_utils import tensor_vstack
