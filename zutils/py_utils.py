@@ -29,11 +29,11 @@ class StopWatch(OrderedDict):
         self._lap_n += 1
         if tag is None:
             tag = self._lap_n
-        self[tag]=time.time()
+        self[tag] = time.time()
         return tag
 
     def lap_and_print(self, tag=None):
-        self.print(self.lap())
+        self.print(self.lap(tag))
 
     def _print(self, tag, t1, t2):
         t0 = self[0]
