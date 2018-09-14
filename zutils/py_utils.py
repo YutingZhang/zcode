@@ -455,6 +455,10 @@ class IntervalSearch:
         return len(self._sp)
 
     @property
+    def splitting_points(self):
+        return self._sp
+
+    @property
     def leftmost_val(self):
         return self._leftmost_val
 
