@@ -32,6 +32,9 @@ class StopWatch(OrderedDict):
         self[tag]=time.time()
         return tag
 
+    def lap_and_print(self, tag=None):
+        self.print(self.lap())
+
     def print(self, tag):
         t0 = self[0]
         t2 = self[tag]
