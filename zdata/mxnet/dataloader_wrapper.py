@@ -45,8 +45,8 @@ class MXDataIterFromLoader(mx.io.DataIter):
             "not all data_fields exist"
         assert not bool(set(label_fields) - set(self._dataloader.output_keys())), \
             "not all label_fields exist"
-        self._data_field_indexes = self._dataloader.index_in_fields(data_fields)
-        self._label_field_indexes = self._dataloader.index_in_fields(label_fields)
+        self._data_field_indexes = self._index_in_dataloader_fields(data_fields)
+        self._label_field_indexes = self._index_in_dataloader_fields(label_fields)
 
         # data and label meta
         self._data_key_size = [
@@ -78,6 +78,12 @@ class MXDataIterFromLoader(mx.io.DataIter):
             # get first batch to fill in provide_data and provide_label
             self.next()
             self.reset()
+
+    def _index_in_dataloader_fields(self, field_names):
+        if isinstance(field_names, str):
+            return self._dataloader.output_keys().index(field_names)
+        else:
+            return list(self._dataloader.output_keys().index(a) for a in field_names)
 
     @property
     def provide_data(self):
