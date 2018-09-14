@@ -7,7 +7,7 @@ import numpy as np
 class MXDataIterFromLoader(mx.io.DataIter):
 
     def __init__(self, dataloader, batch_size, data_fields=None, label_fields=None, clear_epoch=None):
-        super().__init__()
+        super().__init__(batch_size=batch_size)
 
         # set up data loader and batch size
         self._dataloader = dataloader
@@ -100,9 +100,9 @@ class MXDataIterFromLoader(mx.io.DataIter):
         else:
             return None
 
-    @property
-    def batch_size(self):
-        return self._batch_size
+    #@property
+    #def batch_size(self):
+    #    return self._batch_size
 
     @property
     def epoch(self):
