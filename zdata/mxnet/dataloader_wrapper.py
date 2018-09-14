@@ -159,7 +159,7 @@ class MXDataIterFromLoader(mx.io.DataIter):
 
         pad = self.batch_size - the_batch_size
 
-        d = self._dataloader(the_batch_size)
+        d = list(self._dataloader(the_batch_size))
 
         _output_types = self._dataloader.output_types()
         for i in set(self._data_field_indexes + self._label_field_indexes):
