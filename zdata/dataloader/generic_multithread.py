@@ -99,8 +99,12 @@ class MultiThreadDataLoader(AbsFieldDataLoader):
 
         self._lock4cache = threading.Lock()
         self._pool_size = cpu_count() if pool_size is None else pool_size
+        self._parallel = self._pool_size > 0
+        if not self._parallel:      # useful for single thread debugging
+            self._pool_size = 1
         self._pool = Pool(self._pool_size)
-        self._cache_thread = threading.Thread(target=self._preload_dataset)
+        self._cache_thread = None
+        self._reset_preload_thread()
 
         self._min_cache_size = min_cache_size
         self._max_cache_size = max_cache_size if max_cache_size is not None else self._min_cache_size * 2
@@ -137,8 +141,7 @@ class MultiThreadDataLoader(AbsFieldDataLoader):
             return cur_loc
 
     def reset(self):
-        while self._cache_thread.isAlive():
-            self._cache_thread.join()
+        self._join_preload_thread()
         self._lock4cache.acquire()
 
         self._cache.clear()
@@ -147,8 +150,7 @@ class MultiThreadDataLoader(AbsFieldDataLoader):
         self.reset_data()
 
         self._reset_loc()
-        self._cache_thread = threading.Thread(target=self._preload_dataset)
-        # self._cache_thread.start()     # do not auto-start caching
+        self._reset_preload_thread()
         self._lock4cache.release()
 
     def _compute_min_cache_size(self, batch_size_needed=None):
@@ -162,14 +164,27 @@ class MultiThreadDataLoader(AbsFieldDataLoader):
         return len(self._cache) < self._compute_min_cache_size()
 
     def _preload_if_needed(self, batch_size_needed=None):
-        if self._cache_thread.isAlive():
-            return
-        if not self._need_preload():
-            return
-        self._cache_thread = threading.Thread(
-            target=(lambda x: lambda: self._preload_dataset(x))(batch_size_needed)
-        )
-        self._cache_thread.start()
+        if self._parallel:
+            if self._cache_thread.isAlive():
+                return
+            if not self._need_preload():
+                return
+            self._cache_thread = threading.Thread(
+                target=(lambda x: lambda: self._preload_dataset(x))(batch_size_needed)
+            )
+            self._cache_thread.start()
+        else:
+            # no parallel
+            self._preload_dataset(batch_size_needed)
+
+    def _join_preload_thread(self):
+        if self._parallel:
+            while self._cache_thread.isAlive():
+                self._cache_thread.join()
+
+    def _reset_preload_thread(self):
+        self._cache_thread = \
+            threading.Thread(target=self._preload_dataset) if self._parallel else None
 
     def _preload_dataset(self, batch_size_needed=None):
 
@@ -187,9 +202,16 @@ class MultiThreadDataLoader(AbsFieldDataLoader):
             batch_ids = [None] * cache_batch_size
             for i in range(cache_batch_size):
                 batch_ids[i] = self._get_read_batch_id()
-            tmp_data = zip(
-                *self._pool.map(self._read_many_data, batch_ids))
-            tmp_data = tuple(tmp_data)
+
+            if self._pool_size > 1:
+                # multiple thread
+                tmp_data = self._pool.map(self._read_many_data, batch_ids)
+            else:
+                # single thread
+                tmp_data = []
+                for b_id in batch_ids:
+                    tmp_data.append(self._read_many_data(b_id))
+            tmp_data = tuple(zip(*tmp_data))
 
             self._lock4cache.acquire()
             _num_fileds = len(tmp_data)
