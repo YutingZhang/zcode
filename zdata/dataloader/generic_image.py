@@ -218,7 +218,7 @@ class Net(BaseNet):
         "pkl", 'p', 'json', 'mat'
     ]
 
-    @jit(nonpython=True)
+    # @jit(nonpython=True)
     @classmethod
     def _complete_image_ext(cls, bare_fn):
         bare_fn = re.sub(r':[0-9]+$',r'', bare_fn)   # remove postfix
