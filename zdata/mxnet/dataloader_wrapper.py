@@ -5,7 +5,10 @@ from zutils.np_utils import tensor_vstack
 
 class MXDataIterFromLoader(mx.io.DataIter):
 
-    def __init__(self, dataloader, batch_size, data_fields=None, label_fields=None, clear_epoch=None):
+    def __init__(
+            self, dataloader, batch_size, data_fields=None, label_fields=None, clear_epoch=None,
+            data_vstack_pad=0, label_vstack_pad=0
+    ):
         super().__init__(batch_size=batch_size)
 
         # set up data loader and batch size
@@ -54,6 +57,18 @@ class MXDataIterFromLoader(mx.io.DataIter):
         self._label_key_size = [
             (self._dataloader.output_keys()[i], self._dataloader.output_shapes()[i]) for i in self._label_field_indexes
         ]
+
+        # vstack pad
+        if isinstance(data_vstack_pad, list):
+            data_vstack_pad = [data_vstack_pad] * len(self._data_field_indexes)
+        if isinstance(label_vstack_pad, list):
+            label_vstack_pad = [label_vstack_pad] * len(self._label_field_indexes)
+        assert len(data_vstack_pad) == len(self._data_field_indexes), \
+            "data_vstack_pad should have the same len as data_fields"
+        assert len(label_vstack_pad) == len(self._label_field_indexes), \
+            "label_vstack_pad should have the same len as label_fields"
+        self._data_vstack_pad = data_vstack_pad
+        self._label_vstack_pad = label_vstack_pad
 
         def _fill_batch_size(_key_size_p):
             for _i in range(len(_key_size_p)):
@@ -160,20 +175,25 @@ class MXDataIterFromLoader(mx.io.DataIter):
         d = list(self._dataloader(the_batch_size))
 
         _output_types = self._dataloader.output_types()
-        for i in set(self._data_field_indexes + self._label_field_indexes):
-            ot = _output_types[i]
+
+        def _to_mxndarray(_i, _pad_val):
+            ot = _output_types[_i]
             if isinstance(ot, str):
                 ot = getattr(np, ot)
-            d_i = np.array(tensor_vstack(d[i]), dtype=ot)
+            d_i = np.array(tensor_vstack(d[_i], pad=_pad_val), dtype=ot)
             if pad:
                 padding_i = np.tile(d_i[:1], [pad] + [1] * (d_i.ndim-1))
                 d_i = np.concatenate(
                     [d_i, padding_i], axis=0
                 )
-            d[i] = mx.nd.array(d_i)
+            return mx.nd.array(d_i)
 
-        self._data = [d[i] for i in self._data_field_indexes]
-        self._label = [d[i] for i in self._label_field_indexes]
+        self._data = [
+            _to_mxndarray(i, pad_val) for i, pad_val in zip(self._data_field_indexes, self._data_vstack_pad)
+        ]
+        self._label = [
+            _to_mxndarray(i, pad_val) for i, pad_val in zip(self._label_field_indexes, self._label_vstack_pad)
+        ]
         self._pad = pad
 
         return self.current_batch()
