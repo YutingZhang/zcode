@@ -170,7 +170,7 @@ class MXDataIterFromLoader(mx.io.DataIter):
                 d_i = np.concatenate(
                     [d_i, padding_i], axis=0
                 )
-            d[i] = d_i
+            d[i] = mx.nd.array(d_i)
 
         self._data = [d[i] for i in self._data_field_indexes]
         self._label = [d[i] for i in self._label_field_indexes]
