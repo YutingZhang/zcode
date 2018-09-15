@@ -18,8 +18,6 @@ from zutils.option_struct import OptionDef
 
 import math
 
-from numba import jit
-
 
 # use mxnet imread if possible ------------
 import importlib.util
@@ -218,7 +216,6 @@ class Net(BaseNet):
         "pkl", 'p', 'json', 'mat'
     ]
 
-    # @jit(nopython=True)
     @classmethod
     def _complete_image_ext(cls, bare_fn):
         bare_fn = re.sub(r':[0-9]+$',r'', bare_fn)   # remove postfix
@@ -229,12 +226,11 @@ class Net(BaseNet):
                 return fn
         raise FileExistsError("No image file is found")
 
-    # @classmethod
-    @jit(nopython=True)
-    def _load_file(self, fn):
+    @classmethod
+    def _load_file(cls, fn):
         _, ext = os.path.splitext(fn)
         ext = ext[1:]
-        if ext in self._img_ext_list:
+        if ext in cls._img_ext_list:
             im = _imread(fn)
             if len(im.shape) == 2:
                 im = np.reshape(im, im.shape + (1,))
@@ -259,7 +255,6 @@ class Net(BaseNet):
     def read_many_data_identifier(self, read_batch_id):
         return [self._image_list[self.chosen_id_to_image_id(read_batch_id)]]
 
-    # @jit(nopython=True)
     def read_many_data(self, read_batch_id):
 
         image_id = self.chosen_id_to_image_id(read_batch_id)
