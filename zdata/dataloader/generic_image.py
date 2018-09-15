@@ -218,7 +218,7 @@ class Net(BaseNet):
         "pkl", 'p', 'json', 'mat'
     ]
 
-    # @jit(nonpython=True)
+    # @jit(nopython=True)
     @classmethod
     def _complete_image_ext(cls, bare_fn):
         bare_fn = re.sub(r':[0-9]+$',r'', bare_fn)   # remove postfix
@@ -229,7 +229,7 @@ class Net(BaseNet):
                 return fn
         raise FileExistsError("No image file is found")
 
-    # @jit(nonpython=True)
+    # @jit(nopython=True)
     @classmethod
     def _load_file(cls, fn):
         _, ext = os.path.splitext(fn)
@@ -259,7 +259,7 @@ class Net(BaseNet):
     def read_many_data_identifier(self, read_batch_id):
         return [self._image_list[self.chosen_id_to_image_id(read_batch_id)]]
 
-    @jit(nonpython=True)
+    @jit(nopython=True)
     def read_many_data(self, read_batch_id):
 
         image_id = self.chosen_id_to_image_id(read_batch_id)
