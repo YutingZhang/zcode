@@ -59,9 +59,9 @@ class MXDataIterFromLoader(mx.io.DataIter):
         ]
 
         # vstack pad
-        if isinstance(data_vstack_pad, list):
+        if not isinstance(data_vstack_pad, list):
             data_vstack_pad = [data_vstack_pad] * len(self._data_field_indexes)
-        if isinstance(label_vstack_pad, list):
+        if not isinstance(label_vstack_pad, list):
             label_vstack_pad = [label_vstack_pad] * len(self._label_field_indexes)
         assert len(data_vstack_pad) == len(self._data_field_indexes), \
             "data_vstack_pad should have the same len as data_fields"
