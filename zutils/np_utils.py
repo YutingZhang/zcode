@@ -26,6 +26,8 @@ def tensor_vstack(tensor_list, pad=0):
     :return: tensor with max shape
     Source: improved from mxnet RCNN example
     """
+    if isinstance(tensor_list, np.ndarray):
+        return tensor_list
     if len(tensor_list) == 1:
         return tensor_list[0][np.newaxis, :]
 
