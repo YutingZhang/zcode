@@ -229,8 +229,8 @@ class Net(BaseNet):
                 return fn
         raise FileExistsError("No image file is found")
 
-    @jit(nonpython=True)
     @classmethod
+    @jit(nonpython=True)
     def _load_file(cls, fn):
         _, ext = os.path.splitext(fn)
         ext = ext[1:]
