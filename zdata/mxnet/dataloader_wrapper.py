@@ -1,6 +1,9 @@
 import mxnet as mx
 import numpy as np
+import math
 from zutils.np_utils import tensor_vstack
+from functools import partial
+from typing import Callable
 
 
 class MXDataIterFromLoader(mx.io.DataIter):
@@ -59,9 +62,9 @@ class MXDataIterFromLoader(mx.io.DataIter):
         ]
 
         # vstack pad
-        if not isinstance(data_vstack_pad, list):
+        if not isinstance(data_vstack_pad, (list, tuple)):
             data_vstack_pad = [data_vstack_pad] * len(self._data_field_indexes)
-        if not isinstance(label_vstack_pad, list):
+        if not isinstance(label_vstack_pad, (list, tuple)):
             label_vstack_pad = [label_vstack_pad] * len(self._label_field_indexes)
         assert len(data_vstack_pad) == len(self._data_field_indexes), \
             "data_vstack_pad should have the same len as data_fields"
@@ -199,4 +202,145 @@ class MXDataIterFromLoader(mx.io.DataIter):
         return self.current_batch()
 
 
+class DummyGluonDataloaderFromLoader:
+
+    def __init__(
+            self, dataloader, batch_size, data_fields=None, clear_epoch=None, batchify_fn=None, data_vstack_pad=None,
+            reset_at_iter_end=False
+    ):
+
+        # set up data loader and batch size
+        self._dataloader = dataloader
+        self._batch_size = batch_size
+        self._reset_at_iter_end = reset_at_iter_end
+
+        if clear_epoch is None:
+            if self.num_images is None:
+                clear_epoch = False
+            else:
+                clear_epoch = True
+        if clear_epoch:
+            assert self.num_images is not None, \
+                "cannot clear_epoch if the underlying dataloader has not definte number of samples"
+        self._clear_epoch = clear_epoch
+        self._reached_last_iter = False
+
+        # set up data fields and label_fields
+        if data_fields is None:
+            data_fields = list(self._dataloader.output_keys())
+
+        assert not bool(set(data_fields) - set(self._dataloader.output_keys())), \
+            "not all data_fields exist"
+
+        self._data_field_indexes = self._index_in_dataloader_fields(data_fields)
+
+        # batchify func
+        if batchify_fn is None:
+            if data_vstack_pad is None:
+                data_vstack_pad = 0
+            if not isinstance(data_vstack_pad, (list, tuple)):
+                data_vstack_pad = (data_vstack_pad,) * len(self._data_field_indexes)
+            batchify_fn = tuple(partial(tensor_vstack, pad=dvp) for dvp in data_vstack_pad)
+        else:
+            assert data_vstack_pad is None, "must not specify data_vstack_pad with batchify func"
+        if not isinstance(batchify_fn, Callable) and isinstance(batchify_fn, (list, tuple)):
+            batchify_fn_elts = tuple(
+                (dvp if isinstance(dvp, Callable) else partial(tensor_vstack, pad=dvp)) for dvp in batchify_fn
+            )
+            batchify_fn = lambda d: tuple(
+                bfe(d[i]) for i, bfe in zip(range(len(batchify_fn_elts)), batchify_fn_elts)
+            )
+        self._batchify_fn = batchify_fn
+
+    def _index_in_dataloader_fields(self, field_names):
+        if isinstance(field_names, str):
+            return self._dataloader.output_keys().index(field_names)
+        else:
+            return list(self._dataloader.output_keys().index(a) for a in field_names)
+
+    @property
+    def num_images(self):
+        if hasattr(self._dataloader, "num_samples"):
+            return self._dataloader.num_samples()
+        else:
+            return None
+
+    @property
+    def batch_size(self):
+        return self._batch_size
+
+    @property
+    def epoch(self):
+        return self._dataloader.epoch()
+
+    @property
+    def clear_epoch(self):
+        return self._clear_epoch
+
+    @property
+    def eof(self):
+        return self._reached_last_iter
+
+    def reset(self):
+        self._dataloader.reset()
+        self._reached_last_iter = False
+
+    @property
+    def num_batch(self):
+        return math.ceil(self.num_images / self.batch_size)
+
+    def __iter__(self):
+        self._reached_last_iter = True
+        return self
+
+    def __next__(self):
+        return self.next()
+
+    def __len__(self):
+        return self.num_batch
+
+    def next(self):
+
+        if self.eof:
+            if self._reset_at_iter_end:
+                self._dataloader.reset()
+            raise StopIteration
+
+        self._reached_last_iter = self.num_images is not None and (
+                self._dataloader.num_samples() - self._dataloader.num_samples_finished() <= self.batch_size
+        )
+
+        if self.eof:
+            the_batch_size = self._dataloader.num_samples() - self._dataloader.num_samples_finished()
+        else:
+            the_batch_size = self.batch_size
+
+        pad = self.batch_size - the_batch_size
+
+        d = list(self._dataloader(the_batch_size))
+
+        _output_types = self._dataloader.output_types()
+
+        _data = self._batchify_fn(tuple(d[i] for i in self._data_field_indexes))
+
+        def _to_typed_batch(_i, _d_i):
+            ot = _output_types[_i]
+            if isinstance(ot, str):
+                ot = getattr(np, ot)
+            d_i = np.array(_d_i, dtype=ot)
+            if pad:
+                padding_i = np.tile(d_i[:1], [pad] + [1] * (d_i.ndim-1))
+                d_i = np.concatenate(
+                    [d_i, padding_i], axis=0
+                )
+            return d_i
+
+        data = tuple(
+            _to_typed_batch(i, d_i) for i, d_i in zip(self._data_field_indexes, _data)
+        )
+
+        return data
+
+
+GluonDataloaderFromLoader = DummyGluonDataloaderFromLoader
 
