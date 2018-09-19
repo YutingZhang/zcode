@@ -236,8 +236,8 @@ class DummyGluonDataloaderFromLoader:
 
         # batchify func
         self._batchify_fn = standardize_batchify_fn(
-            len(self._data_field_indexes), batchify_fn=batchify_fn, data_vstack_pad=data_vstack_pad)
-
+            len(self._data_field_indexes), batchify_fn=batchify_fn, data_vstack_pad=data_vstack_pad
+        )
 
     def _index_in_dataloader_fields(self, field_names):
         if isinstance(field_names, str):
