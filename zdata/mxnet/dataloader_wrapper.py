@@ -1,7 +1,7 @@
 import mxnet as mx
 import numpy as np
 import math
-from zutils.np_utils import tensor_vstack
+from zutils.np_utils import tensor_vstack, standardize_batchify_fn
 from functools import partial
 from typing import Callable
 
@@ -235,22 +235,9 @@ class DummyGluonDataloaderFromLoader:
         self._data_field_indexes = self._index_in_dataloader_fields(data_fields)
 
         # batchify func
-        if batchify_fn is None:
-            if data_vstack_pad is None:
-                data_vstack_pad = 0
-            if not isinstance(data_vstack_pad, (list, tuple)):
-                data_vstack_pad = (data_vstack_pad,) * len(self._data_field_indexes)
-            batchify_fn = tuple(partial(tensor_vstack, pad=dvp) for dvp in data_vstack_pad)
-        else:
-            assert data_vstack_pad is None, "must not specify data_vstack_pad with batchify func"
-        if not isinstance(batchify_fn, Callable) and isinstance(batchify_fn, (list, tuple)):
-            batchify_fn_elts = tuple(
-                (dvp if isinstance(dvp, Callable) else partial(tensor_vstack, pad=dvp)) for dvp in batchify_fn
-            )
-            batchify_fn = lambda d: tuple(
-                bfe(d[i]) for i, bfe in zip(range(len(batchify_fn_elts)), batchify_fn_elts)
-            )
-        self._batchify_fn = batchify_fn
+        self._batchify_fn = standardize_batchify_fn(
+            len(self._data_field_indexes), batchify_fn=batchify_fn, data_vstack_pad=data_vstack_pad)
+
 
     def _index_in_dataloader_fields(self, field_names):
         if isinstance(field_names, str):
