@@ -136,6 +136,9 @@ class PeriodicRun:
         else:
             return False, None
 
+    def __call__(self, *args, **kwargs):
+        return self.run_if_timeout(*args, **kwargs)
+
     def run_if_timeout(self, *args, **kwargs):
         return self.run_if_timeout_with_prefixfunc(lambda **kwargs: None, *args, **kwargs)
 
