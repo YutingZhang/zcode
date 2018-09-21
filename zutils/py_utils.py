@@ -622,6 +622,15 @@ def make_file_readonly(fn):
     os.chmod(fn, s & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH))  # make it read only
 
 
+def mkdir_p(dir_path):
+    if dir_path and not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+
+def mkpdir_p(fn):
+    mkdir_p(os.path.dirname(fn))
+
+
 # ------------------------------------------------------------------------------
 # get git versioning info
 
