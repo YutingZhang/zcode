@@ -300,13 +300,18 @@ def first_element_apply(condition_func, func, *args):
         return None
 
 
-def flatten_str_dict(hierarchical_dict):
+def flatten_str_dict(hierarchical_dict, sep="", flatten_list_and_tuple=False):
     flatten_dict = OrderedDict()
     for k, v in hierarchical_dict.items():
+        k = str(k)
+        if flatten_list_and_tuple and isinstance(v, (list, tuple)) and not _is_prevented_from_recursive(v):
+            v = OrderedDict(enumerate(v))
         if isinstance(v, dict) and not _is_prevented_from_recursive(v):
-            flatten_v = flatten_str_dict(v)
+            flatten_v = flatten_str_dict(v, sep, flatten_list_and_tuple)
             for kk, vv in flatten_v.items():
-                flatten_dict[k + kk] = vv
+                fk = k + sep + kk
+                assert fk not in flatten_dict, "conflicted keys"
+                flatten_dict[k + sep + kk] = vv
         else:
             flatten_dict[k] = v
     return flatten_dict

@@ -85,21 +85,34 @@ class IfTimeout:
         else:
             self.target_time = self.start_time + timeout
         self.interval = None
+        self.paused_at = None
 
     def is_timeout(self):
         if self.target_time is None:
             return False
         else:
             cur_time = time.time()
-            if cur_time - self.target_time - self.ignored_time > 0:
+            _ignored_time = self.ignored_time
+            if self.paused_at is not None:
+                _ignored_time += cur_time - self.paused_at
+            if cur_time - self.target_time - _ignored_time > 0:
                 if self.interval is None:
-                    self.interval = cur_time - self.start_time - self.ignored_time
+                    self.interval = cur_time - self.start_time - _ignored_time
                 return True
             else:
                 return False
 
     def add_ignored_time(self, time_amount):
         self.ignored_time += time_amount
+
+    def pause(self):
+        if self.paused_at is None:
+            self.paused_at = time.time()
+
+    def resume(self):
+        if self.paused_at is not None:
+            self.add_ignored_time(time.time() - self.paused_at)
+            self.paused_at = None
 
 
 class PeriodicRun:
@@ -152,6 +165,12 @@ class PeriodicRun:
             args[0]()
             return self.func(*args[1:], **kwargs)
         return self._run_if_timeout(the_func, *args, **kwargs)
+
+    def pause(self):
+        self.countdown.pause()
+
+    def resume(self):
+        self.countdown.resume()
 
 
 class FlagEater:
