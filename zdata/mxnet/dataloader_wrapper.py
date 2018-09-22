@@ -213,6 +213,7 @@ class DummyGluonDataloaderFromLoader:
         self._dataloader = dataloader
         self._batch_size = batch_size
         self._reset_at_iter_end = reset_at_iter_end
+        self._reached_lastiter = False
 
         if clear_epoch is None:
             if self.num_images is None:
@@ -266,7 +267,7 @@ class DummyGluonDataloaderFromLoader:
 
     @property
     def eof(self):
-        return self._reached_last_iter
+        return self._reached_lastiter
 
     def reset(self):
         self._dataloader.reset()
@@ -277,7 +278,6 @@ class DummyGluonDataloaderFromLoader:
         return math.ceil(self.num_images / self.batch_size)
 
     def __iter__(self):
-        self._reached_last_iter = True
         return self
 
     def __next__(self):
@@ -291,6 +291,7 @@ class DummyGluonDataloaderFromLoader:
         if self.eof:
             if self._reset_at_iter_end:
                 self._dataloader.reset()
+            self._reached_last_iter = False
             raise StopIteration
 
         self._reached_last_iter = self.num_images is not None and (
