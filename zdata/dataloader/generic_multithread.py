@@ -2,8 +2,8 @@ import time
 from collections import deque, Callable, OrderedDict, Sequence
 import threading
 import random
-# from multiprocessing.dummy import Pool
-from multiprocessing import Pool
+from multiprocessing.dummy import Pool
+# from multiprocessing import Pool
 from multiprocessing import cpu_count
 import math
 from zdata.dataloader.utils import *
