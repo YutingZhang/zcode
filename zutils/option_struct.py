@@ -78,6 +78,11 @@ class OptionStruct:
         return namedtuple(tuple_type_name, d.keys())(**d)
 
     def get_namedtuple(self, tuple_type_name=None):
+
+        return self.get_edict()
+
+        # DISABLE named tuple
+
         if tuple_type_name is None:
             assert self.option_name is not None, "tuple_type_name must be specified"
             tuple_type_name = self.option_name
