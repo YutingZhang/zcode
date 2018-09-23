@@ -1,6 +1,6 @@
-from zdata.dataloader.generic_multithread import DataTransform
-from zdata.dataloader.utils import *
-import zdata.dataloader._image_transform as _image_transform
+from zdata_v1.dataloader.generic_multithread import DataTransform
+from zdata_v1.dataloader.utils import *
+import zdata_v1.dataloader._image_transform as _image_transform
 import numpy as np
 from copy import copy, deepcopy
 from collections import Iterable, Sequence, Callable, deque

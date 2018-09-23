@@ -1,2 +1,2 @@
-from zdata.mxnet.dataloader_wrapper import MXDataIterFromLoader
+from zdata_v1.mxnet.dataloader_wrapper import MXDataIterFromLoader
 

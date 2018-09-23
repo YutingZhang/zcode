@@ -1,3 +1,3 @@
-from zdata.dataloader.generic_multithread import \
+from zdata_v1.dataloader.generic_multithread import \
     DataTransform, DataLoader
-from zdata.dataloader import utils as utils
+from zdata_v1.dataloader import utils as utils
