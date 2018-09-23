@@ -606,6 +606,25 @@ def match_args_to_callable(callable_or_signature, *args, **kwargs):
 
 # ------------------------------------------------------------------------------
 
+class NonSelfAttrDoesNotExist:
+    pass
+
+
+def get_nonself_attr_for_type(cls: type, name, target_type=None):
+    assert hasattr(cls, name), "no such attr"
+    a0 = getattr(cls, name)
+    mro = inspect.getmro(cls)
+    for t in mro:
+        if target_type is not None and not issubclass(t, target_type):
+            continue
+        if hasattr(t, name):
+            a = getattr(t, name)
+            if a is not a0:
+                return a
+    raise NonSelfAttrDoesNotExist
+
+# ------------------------------------------------------------------------------
+
 
 def relative_symlink(src, dst):
     pdir_src = os.path.dirname(src)
