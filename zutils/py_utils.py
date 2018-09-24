@@ -618,6 +618,8 @@ def get_nonself_attr_for_type(cls: type, name, target_type=None):
     for t in mro:
         if target_type is not None and not issubclass(t, target_type):
             continue
+        if issubclass(cls, t):
+            continue
         if hasattr(t, name):
             a = getattr(t, name)
             if a is not a0:
