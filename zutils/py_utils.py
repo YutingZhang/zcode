@@ -12,6 +12,7 @@ import traceback
 import io
 import stat
 from zutils.recursive_utils import *
+import logging
 
 
 def time_stamp_str():
@@ -731,3 +732,17 @@ def git_version_dict(dir_path=None):
     gv_dict["TRACEBACK_FILE_CACHE"] = file_cache
 
     return gv_dict
+
+
+# logger ------------------------------------------------
+
+def create_logger(filename, level=logging.INFO):
+    logging.basicConfig()
+    _logger = logging.getLogger()
+    _logger.setLevel(level)
+
+    if filename is not None and filename:
+        mkpdir_p(filename)
+        fh = logging.FileHandler(filename)
+        _logger.addHandler(fh)
+    return _logger
