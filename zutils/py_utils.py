@@ -736,13 +736,27 @@ def git_version_dict(dir_path=None):
 
 # logger ------------------------------------------------
 
-def create_logger(filename, level=logging.INFO):
-    logging.basicConfig()
-    _logger = logging.getLogger()
-    _logger.setLevel(level)
 
-    if filename is not None and filename:
-        mkpdir_p(filename)
-        fh = logging.FileHandler(filename)
-        _logger.addHandler(fh)
-    return _logger
+class LoggerSet:
+
+    _counter = 0
+
+    @classmethod
+    def create_logger(cls, filename: str, level=logging.INFO, fmt='%(levelname): %(message)s'):
+
+        _logger = logging.getLogger("logger.%d" % cls._counter)
+        _logger.setLevel(level)
+
+        if filename is not None and filename:
+            mkpdir_p(filename)
+            fh = logging.FileHandler(filename)
+            fh.setFormatter(logging.Formatter(fmt))
+            _logger.addHandler(fh)
+
+        cls._counter += 1
+
+        return _logger
+
+
+create_logger = LoggerSet.create_logger
+
