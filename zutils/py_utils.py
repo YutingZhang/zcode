@@ -746,14 +746,20 @@ class LoggerSet:
 
         _logger = logging.getLogger("logger.%d" % cls._counter)
         _logger.setLevel(level)
+        _logger.propagate = False
 
         formatter = logging.Formatter(fmt)
 
         if filename is not None and filename:
+
             mkpdir_p(filename)
             fh = logging.FileHandler(filename)
             fh.setFormatter(formatter)
             _logger.addHandler(fh)
+
+            sh = logging.StreamHandler(sys.stdout)
+            sh.setFormatter(formatter)
+            _logger.addHandler(sh)
 
         cls._counter += 1
 
