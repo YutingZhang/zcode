@@ -742,7 +742,7 @@ class LoggerSet:
     _counter = 0
 
     @classmethod
-    def create_logger(cls, filename: str, level=logging.INFO, fmt='%(levelname): %(message)s'):
+    def create_logger(cls, filename: str, level=logging.INFO, fmt='%(levelname)s: %(message)s'):
 
         _logger = logging.getLogger("logger.%d" % cls._counter)
         _logger.setLevel(level)
