@@ -340,7 +340,20 @@ def recursive_select(x, the_indicators):
     return selected_struct
 
 
-def recursive_merge_2dicts(d1, d2):
+def _merge_replace_func(x1, x2):
+    return x2
+
+
+def recursive_merge_2dicts(d1, d2, merge_func=None):
+
+    if merge_func is None:
+        merge_func = _merge_replace_func
+
+    if (
+            (not isinstance(d1, dict) or _is_prevented_from_recursive(d1)) or
+            (not isinstance(d2, dict) or _is_prevented_from_recursive(d2))
+    ):
+        return merge_func(d1, d2)
 
     k1 = set(d1.keys())
     k2 = set(d2.keys())
@@ -348,7 +361,7 @@ def recursive_merge_2dicts(d1, d2):
     k1_only = k1-k2
     k2_only = k2-k1
 
-    q = dict()
+    q = type(d1)()
     for k in k1_only:
         q[k] = d1[k]
 
@@ -357,23 +370,17 @@ def recursive_merge_2dicts(d1, d2):
             q[k] = d2[k]
 
     for k in k_both:
-        if isinstance(d1[k], dict) and isinstance(d2[k], dict):
-            if _is_prevented_from_recursive(d1[k]) or _is_prevented_from_recursive(d2[k]):
-                q[k] = d2[k]
-            else:
-                q[k] = recursive_merge_2dicts(d1[k], d2[k])
-        else:
-            if d2[k] is not ToRemove:
-                q[k] = d2[k]
+        if d2[k] is not ToRemove:
+            q[k] = recursive_merge_2dicts(d1[k], d2[k], merge_func=merge_func)
 
     return q
 
 
-def recursive_merge_dicts(*args):
+def recursive_merge_dicts(*args, merge_func=None):
     if not args:
         return dict()
 
     q = args[0]
     for p in args[1:]:
-        q = recursive_merge_2dicts(q, p)
+        q = recursive_merge_2dicts(q, p, merge_func=merge_func)
     return q
