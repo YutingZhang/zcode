@@ -677,19 +677,23 @@ def git_version_dict(dir_path=None):
     gv_dict["ARGV"] = copy(sys.argv)
 
     is_git = subprocess.call(
-        "%sgit branch" % prefixed_command, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL) == 0
+        "%sgit branch" % prefixed_command, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        executable="bash",
+    ) == 0
     if not is_git:
         return gv_dict
 
     # git checksum of HEAD
     head_checksum = subprocess.Popen(
-        "%sgit rev-parse HEAD" % prefixed_command, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE
+        "%sgit rev-parse HEAD" % prefixed_command, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        executable="bash",
     ).stdout.read().decode("utf-8")
     gv_dict["HEAD_CHECKSUM"] = head_checksum.strip()
 
     # git diff with HEAD
     diff_with_head = subprocess.Popen(
-        "%sgit diff" % prefixed_command, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE
+        "%sgit diff" % prefixed_command, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        executable="bash",
     ).stdout.read().decode("utf-8")
     if not diff_with_head.strip():
         diff_with_head = None
@@ -708,14 +712,16 @@ def git_version_dict(dir_path=None):
 
         is_tracked = subprocess.call(
             "%sgit ls-files --error-unmatch '%s'" % (prefixed_command, fn),
-            shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
+            shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            executable="bash",
         ) == 0
         is_different = True
 
         if is_tracked:
             diff_for_this_file = subprocess.Popen(
                 "%sgit diff '%s'" % (prefixed_command, fn),
-                shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE
+                shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                executable="bash",
             ).stdout.read().decode("utf-8")
             diff_for_this_file = diff_for_this_file.strip()
             is_different = bool(diff_for_this_file)
