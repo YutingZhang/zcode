@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from copy import copy
+from typing import Union, List
 
 
 class _NonRecursiveDict(dict):
@@ -384,3 +384,30 @@ def recursive_merge_dicts(*args, merge_func=None):
     for p in args[1:]:
         q = recursive_merge_2dicts(q, p, merge_func=merge_func)
     return q
+
+
+def get_dict_entry(d: dict, path: Union[List[str], str], default_val=None, path_separator=None):
+
+    if isinstance(path, str):
+        if path_separator is None:
+            if "/" in path:
+                path_separator = "/"
+            else:
+                path_separator = "."
+        path_list = path.split(path_separator)
+    else:
+        assert path_separator is None, "path_separator should not be specified if path is a list"
+        path_list = list(path)
+
+    dict_type = type(d)
+    a = d
+    for p in path_list[:-1]:
+        if "p" not in a:
+            a[p] = dict_type()
+        a = a[p]
+    if path_list:
+        p = path_list[-1]
+        if "p" not in a:
+            a[p] = default_val
+        a = a[p]
+    return a
