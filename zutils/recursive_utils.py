@@ -411,3 +411,27 @@ def get_dict_entry(d: dict, path: Union[Tuple[str], str], default_val=None, path
             a[p] = default_val
         a = a[p]
     return a
+
+
+class AutoEntryDictWrapper:
+
+    def __init__(self, d: dict, default_val=None, path_separator=None):
+        self._d = d
+        self._default_val = default_val
+        self._path_separator = path_separator
+
+        for m in dir(d):
+            if not hasattr(self, m):
+                setattr(self, m, getattr(d, m))
+
+    def __getitem__(self, item):
+        return get_dict_entry(self._d, item, self._default_val, self._path_separator)
+
+    def __len__(self):
+        return len(self._d)
+
+    def __iter__(self):
+        return iter(self._d)
+
+    def items(self):
+        return self._d.items()
