@@ -1,5 +1,6 @@
 from collections import OrderedDict
-from typing import Union, Tuple
+from typing import Union, Tuple, Callable
+from copy import deepcopy
 
 
 class _NonRecursiveDict(dict):
@@ -415,9 +416,14 @@ def get_dict_entry(d: dict, path: Union[Tuple[str], str], default_val=None, path
 
 class AutoEntryDictWrapper:
 
-    def __init__(self, d: dict, default_val=None, path_separator=None):
+    def __init__(self, d: dict, default_val=None, path_separator=None, default_val_func: Callable=None):
         self._d = d
-        self._default_val = default_val
+        if default_val_func is None:
+            def default_val_func(_):
+                return deepcopy(default_val)
+        else:
+            assert default_val is None, "default_value should not be specified if default_val_func is specified"
+        self._default_val_func = default_val_func
         self._path_separator = path_separator
 
         for m in dir(d):
@@ -425,7 +431,7 @@ class AutoEntryDictWrapper:
                 setattr(self, m, getattr(d, m))
 
     def __getitem__(self, item):
-        return get_dict_entry(self._d, item, self._default_val, self._path_separator)
+        return get_dict_entry(self._d, item, self._default_val_func(item), self._path_separator)
 
     def __len__(self):
         return len(self._d)
