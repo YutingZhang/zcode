@@ -3,29 +3,29 @@ from typing import Union, Tuple, Callable
 from copy import deepcopy
 
 
-class _NonRecursiveDict(dict):
+class NonRecursiveDict(dict):
     pass
 
 
-class _NonRecursiveList(list):
+class NonRecursiveList(list):
     pass
 
 
-class _NonRecursiveTuple(tuple):
+class NonRecursiveTuple(tuple):
     pass
 
 
 _non_recursive_type_mapping={
-    dict: _NonRecursiveDict,
-    list: _NonRecursiveList,
-    tuple: _NonRecursiveTuple,
+    dict: NonRecursiveDict,
+    list: NonRecursiveList,
+    tuple: NonRecursiveTuple,
 }
 
 
 _non_recursive_type_rev_mapping={
-    _NonRecursiveDict: dict,
-    _NonRecursiveList: list,
-    _NonRecursiveTuple: tuple,
+    NonRecursiveDict: dict,
+    NonRecursiveList: list,
+    NonRecursiveTuple: tuple,
 }
 
 
