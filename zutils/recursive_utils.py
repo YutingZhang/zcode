@@ -36,7 +36,10 @@ def not_recursive(a):
         raise ValueError("the type does not support not_recursive")
 
 
-def can_recursive(a):
+disable_recursive = not_recursive
+
+
+def enable_recursive(a):
     if _is_prevented_from_recursive(a):
         return _non_recursive_type_rev_mapping[type(a)](a)
     else:
@@ -45,6 +48,9 @@ def can_recursive(a):
 
 def _is_prevented_from_recursive(a):
     return isinstance(a, tuple(_non_recursive_type_rev_mapping.keys()))
+
+
+is_not_recursive = _is_prevented_from_recursive
 
 
 def recursive_generic_condition_func(x, *args):
