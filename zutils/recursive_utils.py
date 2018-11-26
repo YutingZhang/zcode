@@ -409,12 +409,12 @@ def get_dict_entry(d: dict, path: Union[Tuple[str], str], default_val=None, path
     dict_type = type(d)
     a = d
     for p in path_list[:-1]:
-        if "p" not in a:
+        if p not in a:
             a[p] = dict_type()
         a = a[p]
     if path_list:
         p = path_list[-1]
-        if "p" not in a:
+        if p not in a:
             a[p] = default_val
         a = a[p]
     return a
