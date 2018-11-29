@@ -69,7 +69,10 @@ def standardize_batchify_fn(
         batchify_fn_elts = tuple(
             (dvp if isinstance(dvp, Callable) else partial(tensor_vstack_func, pad=dvp)) for dvp in batchify_fn
         )
-        batchify_fn = lambda d: tuple(
-            bfe(d[i]) for i, bfe in zip(range(len(batchify_fn_elts)), batchify_fn_elts)
-        )
+
+        def batchify_fn(d):
+            return tuple(
+                bfe(d_i) for bfe, d_i in zip(batchify_fn_elts, zip(*d))
+            )
+
     return batchify_fn
