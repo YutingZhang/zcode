@@ -81,6 +81,6 @@ def standardize_batchify_fn(
             (dvp if isinstance(dvp, Callable) else partial(tensor_vstack_func, pad=dvp)) for dvp in batchify_fn
         )
 
-        batchify_fn = _BatchifyTuple(batchify_fn_elts)
+        batchify_fn = _BatchifyTuple(*batchify_fn_elts)
 
     return batchify_fn
