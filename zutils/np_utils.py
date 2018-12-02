@@ -53,15 +53,26 @@ def tensor_vstack(tensor_list, pad=0):
     return all_tensor
 
 
+class _BatchifyTuple:
+
+     def __init__(self, *batchify_fns):
+         self._batchify_fns = batchify_fns
+
+     def __call__(self, d):
+         return tuple(
+             bfe(d_i) for bfe, d_i in zip(self._batchify_fns, zip(*d))
+         )
+
+
 def standardize_batchify_fn(
-        num_data_fileds, batchify_fn=None, data_vstack_pad=None, tensor_vstack_func=tensor_vstack
+        num_data_fields, batchify_fn=None, data_vstack_pad=None, tensor_vstack_func=tensor_vstack
 ):
     # batchify func
     if batchify_fn is None:
         if data_vstack_pad is None:
             data_vstack_pad = 0
         if not isinstance(data_vstack_pad, (list, tuple)):
-            data_vstack_pad = (data_vstack_pad,) * num_data_fileds
+            data_vstack_pad = (data_vstack_pad,) * num_data_fields
         batchify_fn = tuple(partial(tensor_vstack_func, pad=dvp) for dvp in data_vstack_pad)
     else:
         assert data_vstack_pad is None, "must not specify data_vstack_pad with batchify func"
@@ -70,9 +81,6 @@ def standardize_batchify_fn(
             (dvp if isinstance(dvp, Callable) else partial(tensor_vstack_func, pad=dvp)) for dvp in batchify_fn
         )
 
-        def batchify_fn(d):
-            return tuple(
-                bfe(d_i) for bfe, d_i in zip(batchify_fn_elts, zip(*d))
-            )
+        batchify_fn = _BatchifyTuple(batchify_fn_elts)
 
     return batchify_fn
