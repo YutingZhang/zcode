@@ -13,7 +13,7 @@ import io
 import stat
 from zutils.recursive_utils import *
 import logging
-from typing import Type
+from typing import Type, Tuple
 
 
 def time_stamp_str():
@@ -750,7 +750,7 @@ def git_version_dict(dir_path=None):
 
 
 def call_until_success(
-        exceptions_to_ignore: Type[BaseException], *args, **kwargs
+        exceptions_to_ignore: Union[Type[BaseException], Tuple[Type[BaseException]]], *args, **kwargs
 ):
     with True:
         try:
