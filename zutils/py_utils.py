@@ -13,6 +13,7 @@ import io
 import stat
 from zutils.recursive_utils import *
 import logging
+from typing import Type
 
 
 def time_stamp_str():
@@ -676,7 +677,8 @@ def git_version_dict(dir_path=None):
 
     gv_dict["ARGV"] = copy(sys.argv)
 
-    is_git = subprocess.call(
+    is_git = call_until_success(
+        OSError, subprocess.call,
         "%sgit branch" % prefixed_command, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
         executable="bash",
     ) == 0
@@ -684,14 +686,16 @@ def git_version_dict(dir_path=None):
         return gv_dict
 
     # git checksum of HEAD
-    head_checksum = subprocess.Popen(
+    head_checksum = call_until_success(
+        OSError, subprocess.Popen,
         "%sgit rev-parse HEAD" % prefixed_command, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE,
         executable="bash",
     ).stdout.read().decode("utf-8")
     gv_dict["HEAD_CHECKSUM"] = head_checksum.strip()
 
     # git diff with HEAD
-    diff_with_head = subprocess.Popen(
+    diff_with_head = call_until_success(
+        OSError, subprocess.Popen,
         "%sgit diff" % prefixed_command, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE,
         executable="bash",
     ).stdout.read().decode("utf-8")
@@ -710,7 +714,8 @@ def git_version_dict(dir_path=None):
             # not a file in the specified dir
             continue
 
-        is_tracked = subprocess.call(
+        is_tracked = call_until_success(
+            OSError, subprocess.call,
             "%sgit ls-files --error-unmatch '%s'" % (prefixed_command, fn),
             shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
             executable="bash",
@@ -718,7 +723,8 @@ def git_version_dict(dir_path=None):
         is_different = True
 
         if is_tracked:
-            diff_for_this_file = subprocess.Popen(
+            diff_for_this_file = call_until_success(
+                OSError, subprocess.Popen,
                 "%sgit diff '%s'" % (prefixed_command, fn),
                 shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE,
                 executable="bash",
@@ -738,6 +744,19 @@ def git_version_dict(dir_path=None):
     gv_dict["TRACEBACK_FILE_CACHE"] = file_cache
 
     return gv_dict
+
+
+# call until success ------------------------------------
+
+
+def call_until_success(
+        exceptions_to_ignore: Type[BaseException], *args, **kwargs
+):
+    with True:
+        try:
+            return args[0](*args[1:], **kwargs)
+        except exceptions_to_ignore:
+            print("call_until_success: failed try again", file=sys.stderr)
 
 
 # logger ------------------------------------------------
