@@ -2,6 +2,7 @@ from typing import Union, Callable
 from concurrent import futures
 from threading import Lock
 from collections import deque
+from functools import partial
 
 
 class WorkerExecutor:
@@ -61,6 +62,10 @@ class _ImmediateResult:
 class ImmediateExecutor:
     def __call__(self, *args, **kwargs):
         return _ImmediateResult(args[0](*args[1:], **kwargs))
+
+
+ProcessWorkerExecutor = partial(WorkerExecutor, use_thread_pool=False)
+ThreadWorkerExecutor = partial(WorkerExecutor, use_thread_pool=True)
 
 
 immediate_executor = ImmediateExecutor()
