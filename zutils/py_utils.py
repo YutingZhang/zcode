@@ -752,7 +752,7 @@ def git_version_dict(dir_path=None):
 def call_until_success(
         exceptions_to_ignore: Union[Type[BaseException], Tuple[Type[BaseException]]], *args, **kwargs
 ):
-    with True:
+    while True:
         try:
             return args[0](*args[1:], **kwargs)
         except exceptions_to_ignore:
