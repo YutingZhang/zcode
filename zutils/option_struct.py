@@ -63,10 +63,10 @@ class OptionStruct:
     def get_enabled(self, key):
         return self.enabled_dict[key]
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str):
         return self.get_enabled(item)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value):
         self.set_default(key, value)
 
     @staticmethod
