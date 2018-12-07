@@ -266,6 +266,12 @@ def rbool(a):
     return c
 
 
+def ordered_unique(seq: Iterable):
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]
+
+
 def path_full_split(p):
     s = list()
     a = p
