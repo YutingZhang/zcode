@@ -81,6 +81,12 @@ class ImmediateExecutor:
     def __call__(self, *args, **kwargs):
         return _ImmediateResult(args[0](*args[1:], **kwargs))
 
+    def join(self, *args, **kwargs):
+        pass
+
+    def join_and_shutdown(self, *args, **kwargs):
+        pass
+
 
 ProcessWorkerExecutor = partial(WorkerExecutor, use_thread_pool=False)
 ThreadWorkerExecutor = partial(WorkerExecutor, use_thread_pool=True)
