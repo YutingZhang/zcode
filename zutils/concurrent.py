@@ -1,8 +1,9 @@
-from typing import Union, Callable
+from typing import Union, Callable, Optional
 from concurrent import futures
 from threading import Lock
 from collections import deque
 from functools import partial
+import time
 
 
 class WorkerExecutor:
@@ -13,23 +14,40 @@ class WorkerExecutor:
         self._results = deque()
         self._lock = Lock()
 
-    def join(self, wait_callback: Union[Callable, None]=None, shutdown=False):
+    def join(self, wait_callback: Optional[Callable]=None, timeout: Optional[float]=None, shutdown: bool=False):
         with self._lock:
             need_wait_callback = wait_callback is not None
-            while self._results:
+            infinity = float('inf')
+            if timeout is None:
+                timeout = infinity
+            t0 = time.time()
+            t1 = t0
+            while self._results and t1 - t0 <= timeout:
                 r = self._results.popleft()
                 if need_wait_callback:
                     try:
                         r.result(timeout=0.1)
+                        t1 = time.time()
+                        continue
                     except futures.TimeoutError:
                         wait_callback()
                         need_wait_callback = False
-                        r.result()
-                else:
+
+                if timeout == infinity:
                     r.result()
+                else:
+                    t1 = time.time()
+                    remaining_time = timeout - (t1 - t0)
+                    if remaining_time > 0:
+                        try:
+                            r.result(timeout=remaining_time)
+                        except futures.TimeoutError:
+                            break
+                t1 = time.time()
+
             if shutdown:
                 if self._executor is not None:
-                    self._executor.shutdown()
+                    self._executor.shutdown(wait=False)
 
     def __call__(self,  *args, **kwargs):
         with self._lock:
