@@ -692,19 +692,25 @@ def git_version_dict(dir_path=None):
         return gv_dict
 
     # git checksum of HEAD
-    head_checksum = call_until_success(
+    proc = call_until_success(
         OSError, subprocess.Popen,
         "%sgit rev-parse HEAD" % prefixed_command, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE,
         executable="bash",
-    ).stdout.read().decode("utf-8")
+    )
+    head_checksum = proc.stdout.read().decode("utf-8")
+    proc.communicate()
+    proc.wait()
     gv_dict["HEAD_CHECKSUM"] = head_checksum.strip()
 
     # git diff with HEAD
-    diff_with_head = call_until_success(
+    proc = call_until_success(
         OSError, subprocess.Popen,
         "%sgit diff" % prefixed_command, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE,
         executable="bash",
-    ).stdout.read().decode("utf-8")
+    )
+    diff_with_head = proc.stdout.read().decode("utf-8")
+    proc.communicate()
+    proc.wait()
     if not diff_with_head.strip():
         diff_with_head = None
     gv_dict["DIFF_WITH_HEAD"] = diff_with_head
@@ -729,12 +735,15 @@ def git_version_dict(dir_path=None):
         is_different = True
 
         if is_tracked:
-            diff_for_this_file = call_until_success(
+            proc = call_until_success(
                 OSError, subprocess.Popen,
                 "%sgit diff '%s'" % (prefixed_command, fn),
                 shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE,
                 executable="bash",
-            ).stdout.read().decode("utf-8")
+            )
+            diff_for_this_file = proc.stdout.read().decode("utf-8")
+            proc.communicate()
+            proc.wait()
             diff_for_this_file = diff_for_this_file.strip()
             is_different = bool(diff_for_this_file)
 
