@@ -13,7 +13,9 @@ import io
 import stat
 from zutils.recursive_utils import *
 import logging
-from typing import Type, Tuple
+import threading
+from concurrent import futures
+from typing import Type, Tuple, List
 
 
 def time_stamp_str():
@@ -807,4 +809,54 @@ class LoggerSet:
 
 
 create_logger = LoggerSet.create_logger
+
+
+# call with timeout warning ----------------------------
+
+class _CallWithTimeoutCallback:
+
+    thread_executor_pools = deque()
+    thread_executor_pools_lock = threading.Lock()
+
+    @classmethod
+    def call_with_timeout_callback(cls, timeout, timeout_callback, *args, **kwargs):
+        if isinstance(timeout, (list, tuple)):
+            timeout_list = list(zip(timeout, timeout_callback))
+        else:
+            timeout_list = [(timeout, timeout_callback)]
+
+        # borrow/create executor
+        with cls.thread_executor_pools_lock:
+            if not cls.thread_executor_pools:
+                cls.thread_executor_pools.append(futures.ThreadPoolExecutor(max_workers=1))
+            te = cls.thread_executor_pools.pop()
+
+        run_lock = threading.Lock()
+        run_lock.acquire()
+        r = te.submit(cls._call_with_timeout_callback_callback, timeout_list, run_lock)
+        fn = args[0]
+        fn(*args[1:], **kwargs)
+        run_lock.release()
+        r.result()
+
+        # return executor
+        with cls.thread_executor_pools_lock:
+            cls.thread_executor_pools.append(te)
+
+    @staticmethod
+    def _call_with_timeout_callback_callback(
+            timeout_list: List[Tuple[float, Callable]], run_lock: threading.Lock
+    ):
+        timeout_list = sorted(timeout_list, key=lambda x: x[0])
+        t0 = 0
+        for t1, t_callback in timeout_list:
+            dt = max(0, t1 - t0)
+            if run_lock.acquire(timeout=dt):
+                # run finished already
+                break
+            t_callback()
+            t0 = t1
+
+
+call_with_timeout_callback = _CallWithTimeoutCallback.call_with_timeout_callback
 
