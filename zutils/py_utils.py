@@ -835,13 +835,15 @@ class _CallWithTimeoutCallback:
         run_lock.acquire()
         r = te.submit(cls._call_with_timeout_callback_callback, timeout_list, run_lock)
         fn = args[0]
-        fn(*args[1:], **kwargs)
+        out = fn(*args[1:], **kwargs)
         run_lock.release()
         r.result()
 
         # return executor
         with cls.thread_executor_pools_lock:
             cls.thread_executor_pools.append(te)
+
+        return out
 
     @staticmethod
     def _call_with_timeout_callback_callback(
