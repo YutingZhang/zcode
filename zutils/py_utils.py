@@ -847,7 +847,7 @@ class _CallWithTimeoutCallback:
 
     @staticmethod
     def _call_with_timeout_callback_callback(
-            timeout_list: List[Tuple[float, Callable]], run_lock: threading.Lock
+            timeout_list: List[Tuple[float, Union[Callable, str]]], run_lock: threading.Lock
     ):
         timeout_list = sorted(timeout_list, key=lambda x: x[0])
         t0 = 0
@@ -856,7 +856,10 @@ class _CallWithTimeoutCallback:
             if run_lock.acquire(timeout=dt):
                 # run finished already
                 break
-            t_callback()
+            if isinstance(t_callback, str):
+                print(t_callback, file=sys.stderr)
+            else:
+                t_callback()
             t0 = t1
 
 
