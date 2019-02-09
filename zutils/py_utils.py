@@ -656,7 +656,10 @@ def make_file_readonly(fn):
 
 def mkdir_p(dir_path):
     if dir_path and not os.path.exists(dir_path):
-        os.makedirs(dir_path)
+        try:
+            os.makedirs(dir_path)
+        except FileExistsError:
+            pass
 
 
 def mkpdir_p(fn):
