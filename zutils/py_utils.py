@@ -2,7 +2,7 @@ from collections import namedtuple, Iterable
 import time
 import inspect
 from copy import copy
-from collections import deque
+from collections import deque, OrderedDict
 import os
 import datetime
 from inspect import isfunction, ismethod
@@ -16,6 +16,7 @@ import logging
 import threading
 from concurrent import futures
 from typing import Type, Tuple, List
+_ = recursive_apply
 
 
 def time_stamp_str():
