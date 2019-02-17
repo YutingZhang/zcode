@@ -3,7 +3,7 @@ from functools import partial
 from typing import Callable
 
 
-def onthot_to_int(onehot_array, axis=1, dtype=np.int64, keepdims=False):
+def onehot_to_int(onehot_array, axis=1, dtype=np.int64, keepdims=False):
 
     s = onehot_array.shape
     num = s[axis]

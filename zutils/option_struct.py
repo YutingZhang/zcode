@@ -1,7 +1,7 @@
 from collections import namedtuple, Iterable, Sequence
 from copy import copy
-from easydict import EasyDict as edict
 from zutils.py_utils import value_class_for_with, dummy_class_for_with
+import sys
 
 
 class OptionStruct_UnsetCacheNone:
@@ -77,7 +77,13 @@ class OptionStruct:
                 d[k] = v.get_namedtuple(tuple_type_name=(tuple_type_name + "_" + k))
         return namedtuple(tuple_type_name, d.keys())(**d)
 
+    _get_namedtuple_deprecation_warning_printed = False
+
     def get_namedtuple(self, tuple_type_name=None):
+
+        if not type(self)._get_namedtuple_deprecation_warning_printed:
+            type(self)._get_namedtuple_deprecation_warning_printed = True
+            print("WARNING: OptionStruct: get_namedtuple is deprecated.", file=sys.stderr)
 
         return self.get_edict()
 
@@ -100,7 +106,8 @@ class OptionStruct:
         return self._get_dict(self.enabled_dict)
 
     def get_edict(self):
-        return edict(self.get_dict())
+        from easydict import EasyDict
+        return EasyDict(self.get_dict())
 
     def _require(self, option_name, is_include):
         assert isinstance(self.option_def, OptionDef), "invalid option_def"
