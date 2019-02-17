@@ -3,6 +3,29 @@ from typing import Union, Tuple, Callable
 from copy import deepcopy
 
 
+__all__ = [
+    'NonRecursiveDict',
+    'NonRecursiveList',
+    'NonRecursiveTuple',
+    'disable_recursive',
+    'not_recursive',
+    'disable_recursive',
+    'enable_recursive',
+    'recursive_generic_condition_func',
+    'flatten_str_dict',
+    'recursive_apply',
+    'recursive_apply_removing_tag',
+    'recursive_flatten_to_list',
+    'recursive_wrap',
+    'recursive_flatten_with_wrap_func',
+    'recursive_indicators',
+    'recursive_select',
+    'recursive_merge_2dicts',
+    'recursive_merge_dicts',
+    'AutoEntryDictWrapper',
+]
+
+
 class NonRecursiveDict(dict):
     pass
 
@@ -447,3 +470,9 @@ class AutoEntryDictWrapper:
 
     def items(self):
         return self._d.items()
+
+
+def into_structured_ndarray():
+    from .recursive_utils4np import into_structured_ndarray
+    return into_structured_ndarray()
+

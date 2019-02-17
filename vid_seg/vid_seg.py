@@ -3,6 +3,9 @@ import numpy as np
 import cv2
 
 
+__all__ = ['VideoSegReader', 'VideoSegWriter', 'RandomAccessVideoSegReader']
+
+
 class VideoSegWriter():
 
     def __init__(self, folder_path, seg_len=20, fps=None, ext="mp4", fourcc="mp4v", verbose=False):

@@ -1,5 +1,8 @@
-import zutils.recursive_utils as ru
+import recursive_utils.recursive_utils as ru
 import numpy as np
+
+
+__all__ = ['into_structured_ndarray']
 
 
 class _IntoStructuredNDArray:
