@@ -15,7 +15,7 @@ from recursive_utils.recursive_utils import *
 import logging
 import threading
 from concurrent import futures
-from typing import Type, Tuple, List
+from typing import Type, Tuple, List, Union, Callable
 _ = recursive_apply
 
 
