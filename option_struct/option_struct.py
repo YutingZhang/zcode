@@ -157,8 +157,9 @@ class OptionDef:
             assert finalize_check in ("auto",), "unsupported value for finalize_check"
         self._finalize_check = finalize_check
 
-        if "_VERSION_CONTROL" in user_dict:
-            del user_dict["_VERSION_CONTROL"]   # automatically ignore the _VERSION_CONTROL keyword
+        for k in copy(user_dict.keys()):
+            if k.startswith('~') in user_dict:
+                del user_dict[k]   # automatically ignore the ~VERSION_CONTROL and other keywords starting with ~
 
         self._user_dict = user_dict
         self._opts = {}

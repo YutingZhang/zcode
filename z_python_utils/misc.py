@@ -1,5 +1,6 @@
 from collections import Iterable
 import sys
+import os
 import io
 from recursive_utils.recursive_utils import *
 _ = recursive_apply
@@ -72,3 +73,9 @@ def structured_dump(obj, nested_level=0, file=sys.stdout):
     else:
         print('%s%s' % (nested_level * spacing, obj), file=file)
 
+
+def z_python_utils_dir():
+    return os.path.dirname(__file__)
+
+
+pyu_dir = z_python_utils_dir
