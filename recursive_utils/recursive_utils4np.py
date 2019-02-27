@@ -1,4 +1,4 @@
-import recursive_utils.recursive_utils as ru
+from . import recursive_utils as ru
 import numpy as np
 
 
