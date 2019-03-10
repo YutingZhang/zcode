@@ -125,7 +125,7 @@ class ProcessPoolExecutorWithProgressBar:
                 print("Run tasks", end="")
             if self._num_tasks:
                 print(": ")
-                self._create_pbar()
+                self._create_pbar(total=self._num_tasks)
             else:
                 print(" ...")
 

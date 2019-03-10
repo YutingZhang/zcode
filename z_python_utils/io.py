@@ -91,6 +91,7 @@ class TempIndicatorFile:
         self._fn = filename
 
     def __enter__(self):
+        mkpdir_p(self._fn)
         with open(self._fn, "w"):
             pass
 
