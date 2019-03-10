@@ -14,6 +14,9 @@ class WorkerExecutor:
         self._results = deque()
         self._lock = Lock()
 
+    def submit(self, *args, **kwargs):
+        return self(*args, **kwargs)
+
     def join(self, wait_callback: Optional[Callable]=None, timeout: Optional[float]=None, shutdown: bool=False):
         with self._lock:
             need_wait_callback = wait_callback is not None
@@ -81,6 +84,9 @@ class ImmediateExecutor:
     def __call__(self, *args, **kwargs):
         return _ImmediateResult(args[0](*args[1:], **kwargs))
 
+    def submit(self, *args, **kwargs):
+        return self(*args, **kwargs)
+
     def join(self, *args, **kwargs):
         pass
 
@@ -93,3 +99,89 @@ ThreadWorkerExecutor = partial(WorkerExecutor, use_thread_pool=True)
 
 
 immediate_executor = ImmediateExecutor()
+
+
+class ProcessPoolExecutorWithProgressBar:
+
+    def __init__(
+            self, num_workers: int=0, num_tasks: Optional[int]=None, title: Optional[str]=None):
+
+        self._pbar = None
+        self._num_workers = num_workers
+        self._num_tasks = num_tasks
+        self._title = title
+        self._results = []
+        if self._num_workers <= 0:
+            self._executor = immediate_executor
+        else:
+            self._executor = futures.ProcessPoolExecutor(max_workers=num_workers)
+
+        if self._need_pbar:
+            if self._title:
+                print("[%s] " % self._title, end="")
+            if self._num_workers > 0:
+                print("Submit tasks", end="")
+            else:
+                print("Run tasks", end="")
+            if self._num_tasks:
+                print(": ")
+                self._create_pbar()
+            else:
+                print(" ...")
+
+        self._open_for_submit = True
+
+    @property
+    def _need_pbar(self):
+        return self._num_tasks is None or self._num_tasks >= 0
+
+    def _create_pbar(self, total: int):
+        if not self._need_pbar:
+            return
+        self._close_pbar()
+        from tqdm import tqdm
+        self._pbar = tqdm(total=total)
+
+    def _close_pbar(self):
+        if not self._need_pbar:
+            return
+        if self._pbar is not None:
+            self._pbar.close()
+            self._pbar = None
+
+    def _inc_pbar(self):
+        if not self._need_pbar:
+            return
+        if self._pbar is not None:
+            self._pbar.update(1)
+
+    def submit(self, *args, **kwargs):
+        assert self._open_for_submit, "executor is joined/joining"
+        r = self._executor.submit(*args, **kwargs)
+        if self._num_workers > 0:
+            self._results.append(r)
+        self._inc_pbar()
+        return r
+
+    def submit_dummy(self):
+        self._inc_pbar()
+
+    def join(self):
+        self._close_pbar()
+        if self._num_workers <= 0:
+            return
+
+        if self._need_pbar:
+            if self._title:
+                print("[%s] " % self._title, end="")
+            print("Run tasks: ")
+
+        self._create_pbar(total=len(self._results))
+        while self._results:
+            r = self._results.pop()
+            r.result()
+            self._inc_pbar()
+        self._close_pbar()
+
+    def __del__(self):
+        self._close_pbar()
