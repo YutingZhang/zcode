@@ -110,7 +110,7 @@ class ProcessPoolExecutorWithProgressBar:
         self._num_workers = num_workers
         self._num_tasks = num_tasks
         self._title = title
-        self._results = []
+        self._results = deque()
         if self._num_workers <= 0:
             self._executor = immediate_executor
         else:
@@ -178,7 +178,7 @@ class ProcessPoolExecutorWithProgressBar:
 
         self._create_pbar(total=len(self._results))
         while self._results:
-            r = self._results.pop()
+            r = self._results.popleft()
             r.result()
             self._inc_pbar()
         self._close_pbar()
