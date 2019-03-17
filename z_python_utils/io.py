@@ -2,6 +2,7 @@ import os
 import sys
 import stat
 import logging
+from typing import List, Callable
 
 
 def path_full_split(p):
@@ -83,4 +84,47 @@ class LoggerSet:
 
 
 create_logger = LoggerSet.create_logger
+
+
+class TempIndicatorFile:
+    def __init__(self, filename: str):
+        self._fn = filename
+
+    def __enter__(self):
+        mkpdir_p(self._fn)
+        with open(self._fn, "w"):
+            pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            os.remove(self._fn)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            pass
+
+
+def call_if_not_exisit(*args, **kwargs):
+    assert len(args) >= 3, "call_with_file_existence(output_path, extra_paths, fn, ...)"
+    output_path = args[0]
+    assert isinstance(output_path, str), "the first argument (output_path) must be a str"
+    extra_paths = args[1]
+    fn = args[2]
+    assert isinstance(fn, Callable), "the third argument (fn) must be a callable"
+
+    if extra_paths:
+        for p in extra_paths:
+            if os.path.exists(p):
+                return
+
+    if os.path.exists(output_path):
+        return
+
+    running_file = output_path + ".RUNNING"
+
+    if os.path.exists(output_path + ".RUNNING"):
+        return
+
+    with TempIndicatorFile(running_file):
+        return fn(*args[3:], **kwargs)
 
