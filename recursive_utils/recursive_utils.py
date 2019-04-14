@@ -15,6 +15,7 @@ __all__ = [
     'flatten_str_dict',
     'recursive_apply',
     'recursive_apply_removing_tag',
+    'ToRemove',
     'recursive_flatten_to_list',
     'recursive_wrap',
     'recursive_flatten_with_wrap_func',
