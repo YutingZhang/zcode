@@ -33,10 +33,16 @@ def tensor_vstack(tensor_list, pad=0):
     if len(tensor_list) == 1:
         return tensor_list[0][np.newaxis, :]
 
-    ndim = len(tensor_list[0].shape)
+    ndim = max(len(tensor.shape) for tensor in tensor_list)
     dimensions = [len(tensor_list)]  # first dim is batch size
     for dim in range(ndim):
-        dimensions.append(max([tensor.shape[dim] for tensor in tensor_list]))
+        dimensions.append(max([(tensor.shape[dim] if len(tensor.shape) > dim else 0) for tensor in tensor_list]))
+
+    tensor_list = [*tensor_list]
+    for i in range(len(tensor_list)):
+        extra_ndim = ndim - len(tensor_list[i].shape)
+        if extra_ndim > 0:
+            tensor_list[i] = np.reshape(tensor_list[i], tensor_list[i].shape + (1,) * extra_ndim)
 
     dtype = tensor_list[0].dtype
     if pad == 0:
