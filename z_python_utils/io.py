@@ -27,13 +27,18 @@ def path_full_split(p):
     return s
 
 
-def relative_symlink(src, dst):
+def relative_symlink(src, dst, overwrite=False):
     pdir_src = os.path.dirname(src)
     pdir_dst = os.path.dirname(dst)
     src_rel_dst = os.path.relpath(pdir_src, pdir_dst)
     src_rel = os.path.join(src_rel_dst, os.path.basename(src))
-    # if os.path.exists(dst):
-    #     os.remove(dst)
+    if overwrite and os.path.exists(dst):
+        try:
+            os.remove(dst)
+        except OSError:
+            pass
+    if os.path.exists(dst):
+        raise OSError('destination exists: %s' % dst)
     os.symlink(src_rel, dst)
 
 
