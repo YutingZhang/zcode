@@ -23,6 +23,7 @@ __all__ = [
     'recursive_select',
     'recursive_merge_2dicts',
     'recursive_merge_dicts',
+    'get_dict_entry',
     'AutoEntryDictWrapper',
 ]
 
@@ -433,14 +434,22 @@ def get_dict_entry(d: dict, path: Union[Tuple[str], str], default_val=None, path
     dict_type = type(d)
     a = d
     for p in path_list[:-1]:
-        if p not in a:
-            a[p] = dict_type()
-        a = a[p]
+        if p in a:
+            a = a[p]
+        elif isinstance(p, type):
+            a = p(a)
+        else:
+            a = dict_type()
+
     if path_list:
         p = path_list[-1]
-        if p not in a:
-            a[p] = default_val
-        a = a[p]
+        if p in a:
+            a = a[p]
+        elif isinstance(p, type):
+            a = p(a)
+        else:
+            a = default_val
+
     return a
 
 
