@@ -160,3 +160,7 @@ class _CallWithTimeoutCallback:
 
 call_with_timeout_callback = _CallWithTimeoutCallback.call_with_timeout_callback
 
+
+def do_nothing():
+    pass
+
