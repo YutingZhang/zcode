@@ -436,7 +436,7 @@ def get_dict_entry(d: dict, path: Union[Tuple[str], str], default_val=None, path
     for p in path_list[:-1]:
         if p in a:
             a = a[p]
-        elif isinstance(p, type):
+        elif isinstance(p, Callable):
             a = p(a)
         else:
             a = dict_type()
@@ -445,7 +445,7 @@ def get_dict_entry(d: dict, path: Union[Tuple[str], str], default_val=None, path
         p = path_list[-1]
         if p in a:
             a = a[p]
-        elif isinstance(p, type):
+        elif isinstance(p, Callable):
             a = p(a)
         else:
             a = default_val
