@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Union, Tuple, Callable
+from typing import Union, Tuple, Callable, Optional
 from copy import deepcopy
 
 
@@ -24,6 +24,8 @@ __all__ = [
     'recursive_merge_2dicts',
     'recursive_merge_dicts',
     'get_dict_entry',
+    'get_entry',
+    'get_single_entry',
     'AutoEntryDictWrapper',
 ]
 
@@ -418,7 +420,41 @@ def recursive_merge_dicts(*args, merge_func=None):
     return q
 
 
-def get_dict_entry(d: dict, path: Union[Tuple[str], str], default_val=None, path_separator=None):
+def get_single_entry(d, item, default_val=None, default_val_func: Optional[Callable]=None):
+
+    try:
+        return d[item]
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except:
+        pass
+
+    if isinstance(item, Callable):
+        try:
+            return item(d)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            pass
+
+    if default_val_func is not None:
+        assert default_val is None, 'default_val and default_val_func should not be both specified'
+        try:
+            return default_val_func(item)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            pass
+        return default_val_func()
+
+    return default_val
+
+
+def get_entry(
+        d, path: Union[Tuple, str],
+        default_val=None, default_val_func: Optional[Callable]=None,
+        path_separator=None
+):
 
     if isinstance(path, str):
         if path_separator is None:
@@ -431,26 +467,20 @@ def get_dict_entry(d: dict, path: Union[Tuple[str], str], default_val=None, path
         assert path_separator is None, "path_separator should not be specified if path is a tuple"
         path_list = tuple(path)
 
-    dict_type = type(d)
+    def dict_type(*args, **kwargs):
+        return type(d)
+
     a = d
     for p in path_list[:-1]:
-        if p in a:
-            a = a[p]
-        elif isinstance(p, Callable):
-            a = p(a)
-        else:
-            a = dict_type()
+        get_single_entry(d, p, default_val_func=dict_type)
 
     if path_list:
-        p = path_list[-1]
-        if p in a:
-            a = a[p]
-        elif isinstance(p, Callable):
-            a = p(a)
-        else:
-            a = default_val
+        get_single_entry(d, p, default_val=default_val, default_val_func=default_val_func)
 
     return a
+
+
+get_dict_entry = get_entry
 
 
 class AutoEntryDictWrapper:
