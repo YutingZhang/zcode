@@ -23,6 +23,7 @@ __all__ = [
     'recursive_select',
     'recursive_merge_2dicts',
     'recursive_merge_dicts',
+    'NoDefaultValue',
     'get_dict_entry',
     'get_entry',
     'get_single_entry',
@@ -420,22 +421,29 @@ def recursive_merge_dicts(*args, merge_func=None):
     return q
 
 
-def get_single_entry(d, item, default_val=None, default_val_func: Optional[Callable]=None):
+class NoDefaultValue:
+    pass
+
+
+def get_single_entry(d, item, default_val=NoDefaultValue, default_val_func: Optional[Callable]=None):
+
+    if default_val_func is None and default_val is NoDefaultValue and not isinstance(item, Callable):
+        return d[item]
 
     try:
         return d[item]
     except (KeyboardInterrupt, SystemExit):
         raise
-    except:
-        pass
+    except Exception as exception:
+        key_exception = exception
 
     if isinstance(item, Callable):
         try:
             return item(d)
         except (KeyboardInterrupt, SystemExit):
             raise
-        except:
-            pass
+        except Exception as exception:
+            call_exception = exception
 
     if default_val_func is not None:
         assert default_val is None, 'default_val and default_val_func should not be both specified'
@@ -447,12 +455,15 @@ def get_single_entry(d, item, default_val=None, default_val_func: Optional[Calla
             pass
         return default_val_func()
 
+    if default_val is NoDefaultValue:
+        raise key_exception
+
     return default_val
 
 
 def get_entry(
         d, path: Union[Tuple, str],
-        default_val=None, default_val_func: Optional[Callable]=None,
+        default_val=NoDefaultValue, default_val_func: Optional[Callable]=None,
         path_separator=None
 ):
 
@@ -471,11 +482,15 @@ def get_entry(
         return type(d)
 
     a = d
-    for p in path_list[:-1]:
-        get_single_entry(d, p, default_val_func=dict_type)
+    if default_val is NoDefaultValue and default_val_func is None:
+        for p in path_list[:-1]:
+            a = get_single_entry(a, p)
+    else:
+        for p in path_list[:-1]:
+            a = get_single_entry(a, p, default_val_func=dict_type)
 
     if path_list:
-        get_single_entry(d, p, default_val=default_val, default_val_func=default_val_func)
+        a = get_single_entry(a, path_list[-1], default_val=default_val, default_val_func=default_val_func)
 
     return a
 
