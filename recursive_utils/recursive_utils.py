@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Union, Tuple, Callable
+from typing import Union, Tuple, Callable, Optional
 from copy import deepcopy
 
 
@@ -23,7 +23,10 @@ __all__ = [
     'recursive_select',
     'recursive_merge_2dicts',
     'recursive_merge_dicts',
+    'NoDefaultValue',
     'get_dict_entry',
+    'get_entry',
+    'get_single_entry',
     'AutoEntryDictWrapper',
 ]
 
@@ -418,7 +421,51 @@ def recursive_merge_dicts(*args, merge_func=None):
     return q
 
 
-def get_dict_entry(d: dict, path: Union[Tuple[str], str], default_val=None, path_separator=None):
+class NoDefaultValue:
+    pass
+
+
+def get_single_entry(d, item, default_val=NoDefaultValue, default_val_func: Optional[Callable]=None):
+
+    if default_val_func is None and default_val is NoDefaultValue and not isinstance(item, Callable):
+        return d[item]
+
+    try:
+        return d[item]
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception as exception:
+        key_exception = exception
+
+    if isinstance(item, Callable):
+        try:
+            return item(d)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception as exception:
+            call_exception = exception
+
+    if default_val_func is not None:
+        assert default_val is None, 'default_val and default_val_func should not be both specified'
+        try:
+            return default_val_func(item)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            pass
+        return default_val_func()
+
+    if default_val is NoDefaultValue:
+        raise key_exception
+
+    return default_val
+
+
+def get_entry(
+        d, path: Union[Tuple, str],
+        default_val=NoDefaultValue, default_val_func: Optional[Callable]=None,
+        path_separator=None
+):
 
     if isinstance(path, str):
         if path_separator is None:
@@ -431,26 +478,24 @@ def get_dict_entry(d: dict, path: Union[Tuple[str], str], default_val=None, path
         assert path_separator is None, "path_separator should not be specified if path is a tuple"
         path_list = tuple(path)
 
-    dict_type = type(d)
+    def dict_type(*args, **kwargs):
+        return type(d)
+
     a = d
-    for p in path_list[:-1]:
-        if p in a:
-            a = a[p]
-        elif isinstance(p, type):
-            a = p(a)
-        else:
-            a = dict_type()
+    if default_val is NoDefaultValue and default_val_func is None:
+        for p in path_list[:-1]:
+            a = get_single_entry(a, p)
+    else:
+        for p in path_list[:-1]:
+            a = get_single_entry(a, p, default_val_func=dict_type)
 
     if path_list:
-        p = path_list[-1]
-        if p in a:
-            a = a[p]
-        elif isinstance(p, type):
-            a = p(a)
-        else:
-            a = default_val
+        a = get_single_entry(a, path_list[-1], default_val=default_val, default_val_func=default_val_func)
 
     return a
+
+
+get_dict_entry = get_entry
 
 
 class AutoEntryDictWrapper:
