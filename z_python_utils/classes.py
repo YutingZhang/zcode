@@ -163,6 +163,8 @@ def get_nonself_attr_for_type(cls: type, name, target_type=None):
 
 class TagClass:
 
+    name = None
+
     def __init__(self):
         assert type(self) is not TagClass, "cannot instantiate TagClass directly, must use an inherent class"
 
@@ -173,7 +175,10 @@ class TagClass:
         return hash(type(self))
 
     def __repr__(self):
-        return "[Tag:%s]" % type(self).__name__
+        if self.name is None:
+            return "[Tag:%s]" % type(self).__name__
+        else:
+            return self.name
 
     def __str__(self):
         return self.__repr__()
