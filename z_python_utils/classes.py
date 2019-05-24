@@ -163,8 +163,11 @@ def get_nonself_attr_for_type(cls: type, name, target_type=None):
 
 class TagClass:
 
+    def __init__(self):
+        assert type(self) is not TagClass, "cannot instantiate TagClass directly, must use an inherent class"
+
     def __eq__(self, other):
-        return isinstance(other, type(self))
+        return isinstance(other, type(self)) or (other is type(self))
 
     def __hash__(self):
         return hash(type(self))
