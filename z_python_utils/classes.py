@@ -2,6 +2,19 @@ import inspect
 from inspect import isfunction, ismethod
 
 
+__all__ = [
+    'get_new_members',
+    'update_class_def_per_ref',
+    'link_with_instance',
+    'value_class_for_with',
+    'dummy_class_for_with',
+    'ClsWithCustomInit',
+    'NonSelfAttrDoesNotExist',
+    'get_nonself_attr_for_type',
+    'TagClass',
+]
+
+
 def get_new_members(inherent_class, base_class):
     assert issubclass(inherent_class, base_class), "must be inherent class and base class"
     target_mem = dict(inspect.getmembers(inherent_class))
@@ -44,7 +57,6 @@ def link_with_instance(self, another):
             continue
         setattr(
             self, k, (lambda vv: lambda *arg, **kwargs: vv(*arg, **kwargs))(v))
-
 
 
 def value_class_for_with(init_value=None):
@@ -147,4 +159,19 @@ def get_nonself_attr_for_type(cls: type, name, target_type=None):
             if a is not a0:
                 return a
     raise NonSelfAttrDoesNotExist
+
+
+class TagClass:
+
+    def __eq__(self, other):
+        return isinstance(other, type(self))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __repr__(self):
+        return "[Tag:%s]" % type(self).__name__
+
+    def __str__(self):
+        return self.__repr__()
 
