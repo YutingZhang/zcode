@@ -6,6 +6,7 @@ __all__ = [
     'get_new_members',
     'update_class_def_per_ref',
     'link_with_instance',
+    'ValuedContext',
     'value_class_for_with',
     'dummy_class_for_with',
     'ClsWithCustomInit',
@@ -59,14 +60,20 @@ def link_with_instance(self, another):
             self, k, (lambda vv: lambda *arg, **kwargs: vv(*arg, **kwargs))(v))
 
 
+class ValuedContext:
+    def __init__(self, *args, **kwargs):
+        pass
+
+
 def value_class_for_with(init_value=None):
 
-    class value_for_with:
+    class value_for_with(ValuedContext):
 
         current_value = init_value
         value_stack = [init_value]
 
         def __init__(self, value):
+            super().__init__(value)
             self._value = value
 
         def __enter__(self):
@@ -82,10 +89,10 @@ def value_class_for_with(init_value=None):
     return value_for_with
 
 
-class dummy_class_for_with:
+class dummy_class_for_with(ValuedContext):
 
-    def __init__(self):
-        pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def __enter__(self):
         return self

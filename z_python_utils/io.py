@@ -2,7 +2,8 @@ import os
 import sys
 import stat
 import logging
-from typing import List, Callable
+from typing import List, Tuple, Callable, Union
+from shutil import rmtree
 
 
 def path_full_split(p):
@@ -107,6 +108,39 @@ class TempIndicatorFile:
             raise
         except:
             pass
+
+
+class RemoveFilesWhenExit:
+    def __init__(self, paths: Union[str, List[str], Tuple[str]]):
+        if isinstance(paths, str):
+            paths = [paths]
+        paths = list(paths)
+        self.paths = paths
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.paths is None:
+            return
+        for p in self.paths:
+            try:
+                rmtree(os.path.abspath(p))
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except:
+                pass
+
+    def abort(self):
+        self.paths = []
+
+
+def remove_files_when_finish(func):
+    def wrapper_remove_files_when_finished(*args, paths_to_remove_when_finish=None, **kwargs):
+        with RemoveFilesWhenExit(paths_to_remove_when_finish):
+            return func(*args, **kwargs)
+
+    return wrapper_remove_files_when_finished
 
 
 def call_if_not_exisit(*args, **kwargs):
