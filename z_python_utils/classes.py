@@ -1,8 +1,11 @@
 import inspect
 from inspect import isfunction, ismethod
+from typing import List
 
 
 __all__ = [
+    'ClassPropertyDescriptor',
+    'classproperty',
     'get_new_members',
     'update_class_def_per_ref',
     'link_with_instance',
@@ -14,6 +17,37 @@ __all__ = [
     'get_nonself_attr_for_type',
     'TagClass',
 ]
+
+
+class ClassPropertyDescriptor(object):
+
+    def __init__(self, fget, fset=None):
+        self.fget = fget
+        self.fset = fset
+
+    def __get__(self, obj, klass=None):
+        if klass is None:
+            klass = type(obj)
+        return self.fget.__get__(obj, klass)()
+
+    def __set__(self, obj, value):
+        if not self.fset:
+            raise AttributeError("can't set attribute")
+        type_ = type(obj)
+        return self.fset.__get__(obj, type_)(value)
+
+    def setter(self, func):
+        if not isinstance(func, (classmethod, staticmethod)):
+            func = classmethod(func)
+        self.fset = func
+        return self
+
+
+def classproperty(func):
+    if not isinstance(func, (classmethod, staticmethod)):
+        func = classmethod(func)
+
+    return ClassPropertyDescriptor(func)
 
 
 def get_new_members(inherent_class, base_class):
@@ -65,28 +99,42 @@ class ValuedContext:
         pass
 
 
+class _ValueForWith(ValuedContext):
+
+    def __init__(self, value):
+        super().__init__(value)
+        self._value = value
+
+    def __enter__(self):
+        self.value_stack.append(self._value)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.value_stack.pop()
+        return False
+
+    @classproperty
+    def current_value(cls):
+        return cls.value_stack[-1]
+
+    @current_value.setter
+    def current_value(cls, val):
+        cls.value_stack[-1] = val
+
+    @classproperty
+    def value_stack(cls) -> List:
+        if hasattr(cls, '_value_stack'):
+            return cls._value_stack
+        else:
+            raise NotImplementedError('_value_stack is not implemented')
+
+
 def value_class_for_with(init_value=None):
 
-    class value_for_with(ValuedContext):
+    class ValueForWith(_ValueForWith):
+        _value_stack = [init_value]
 
-        current_value = init_value
-        value_stack = [init_value]
-
-        def __init__(self, value):
-            super().__init__(value)
-            self._value = value
-
-        def __enter__(self):
-            self.value_stack.append(self._value)
-            value_for_with.current_value = self._value
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            self.value_stack.pop()
-            value_for_with.current_value = self.value_stack[-1]
-            return False
-
-    return value_for_with
+    return ValueForWith
 
 
 class dummy_class_for_with(ValuedContext):
