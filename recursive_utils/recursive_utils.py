@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Union, Tuple, Callable, Optional
+from typing import Union, Tuple, Callable, Optional, Type, Dict
 from copy import deepcopy
 
 
@@ -425,7 +425,15 @@ class NoDefaultValue:
     pass
 
 
-def get_single_entry(d, item, default_val=NoDefaultValue, default_val_func: Optional[Callable]=None):
+class _GetSingleEntryReturnDefaultValue(BaseException):
+    def __init__(self, val):
+        self.val = val
+
+
+def _get_single_entry_no_set_item(
+        d, item, default_val=NoDefaultValue, default_val_func: Optional[Callable]=None,
+        allow_callable_object=True
+):
 
     if default_val_func is None and default_val is NoDefaultValue and not isinstance(item, Callable):
         return d[item]
@@ -437,7 +445,7 @@ def get_single_entry(d, item, default_val=NoDefaultValue, default_val_func: Opti
     except Exception as exception:
         key_exception = exception
 
-    if isinstance(item, Callable):
+    if allow_callable_object and isinstance(item, Callable):
         try:
             return item(d)
         except (KeyboardInterrupt, SystemExit):
@@ -449,23 +457,42 @@ def get_single_entry(d, item, default_val=NoDefaultValue, default_val_func: Opti
         assert default_val is None or default_val is NoDefaultValue, \
             'default_val and default_val_func should not be both specified'
         try:
-            return default_val_func(item)
+            raise _GetSingleEntryReturnDefaultValue(default_val_func(item))
         except (KeyboardInterrupt, SystemExit):
             raise
         except:
             pass
-        return default_val_func()
+        raise _GetSingleEntryReturnDefaultValue(default_val_func())
 
     if default_val is NoDefaultValue:
         raise key_exception
 
-    return default_val
+    raise _GetSingleEntryReturnDefaultValue(default_val)
+
+
+def get_single_entry(
+        d, item, default_val=NoDefaultValue, default_val_func: Optional[Callable]=None,
+        allow_callable_object=True, set_item_with_default=False
+):
+    try:
+        return _get_single_entry_no_set_item(
+            d, item, default_val=default_val, default_val_func=default_val_func,
+            allow_callable_object=allow_callable_object
+        )
+    except _GetSingleEntryReturnDefaultValue as h:
+        v = h.val
+
+    if set_item_with_default:
+        d[item] = v
+
+    return v
 
 
 def get_entry(
         d, path: Union[Tuple, str],
         default_val=NoDefaultValue, default_val_func: Optional[Callable]=None,
-        path_separator=None
+        path_separator=None, default_dict_type: Optional[Type[Dict]]=None,
+        allow_callable_object=True, set_item_with_default=False
 ):
 
     if isinstance(path, str):
@@ -479,19 +506,31 @@ def get_entry(
         assert path_separator is None, "path_separator should not be specified if path is a tuple"
         path_list = tuple(path)
 
-    def dict_type(*args, **kwargs):
-        return type(d)
+    if default_dict_type:
+        def dict_type(*args, **kwargs):
+            return default_dict_type()
+    else:
+        def dict_type(*args, **kwargs):
+            return type(d)()
 
     a = d
     if default_val is NoDefaultValue and default_val_func is None:
         for p in path_list[:-1]:
-            a = get_single_entry(a, p)
+            a = get_single_entry(a, p, allow_callable_object=allow_callable_object)
     else:
         for p in path_list[:-1]:
-            a = get_single_entry(a, p, default_val_func=dict_type)
+            a = get_single_entry(
+                a, p, default_val_func=dict_type,
+                allow_callable_object=allow_callable_object,
+                set_item_with_default=set_item_with_default
+            )
 
     if path_list:
-        a = get_single_entry(a, path_list[-1], default_val=default_val, default_val_func=default_val_func)
+        a = get_single_entry(
+            a, path_list[-1], default_val=default_val, default_val_func=default_val_func,
+            allow_callable_object=allow_callable_object,
+            set_item_with_default=set_item_with_default
+        )
 
     return a
 
@@ -516,7 +555,10 @@ class AutoEntryDictWrapper:
                 setattr(self, m, getattr(d, m))
 
     def __getitem__(self, item):
-        return get_dict_entry(self._d, item, self._default_val_func(item), self._path_separator)
+        return get_dict_entry(
+            self._d, item, self._default_val_func(item), self._path_separator,
+            allow_callable_object=False, set_item_with_default=True
+        )
 
     def __len__(self):
         return len(self._d)
