@@ -135,25 +135,12 @@ class RemoveFilesWhenExit:
         self.paths = []
 
 
-def _wrapper_remove_files_when_finished(*args, paths_to_remove_when_finish=None, **kwargs):
-    func = args[0]
-    the_args = args[1:]
-    with RemoveFilesWhenExit(paths_to_remove_when_finish):
-        return func(*the_args, **kwargs)
-
-
-class _BindFunc:
-    def __init__(self, func, *args, **kwargs):
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-
-    def __call__(self, *args, **kwargs):
-        return self.func(*[*self.args, *args], **{**self.kwargs, **kwargs})
-
-
 def remove_files_when_finish(func):
-    return _BindFunc(_wrapper_remove_files_when_finished, func)
+    def wrapper_remove_files_when_finished(*args, paths_to_remove_when_finish=None, **kwargs):
+        with RemoveFilesWhenExit(paths_to_remove_when_finish):
+            return func(*args, **kwargs)
+
+    return wrapper_remove_files_when_finished
 
 
 def call_if_not_exisit(*args, **kwargs):
