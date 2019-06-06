@@ -446,7 +446,8 @@ def get_single_entry(d, item, default_val=NoDefaultValue, default_val_func: Opti
             call_exception = exception
 
     if default_val_func is not None:
-        assert default_val is None, 'default_val and default_val_func should not be both specified'
+        assert default_val is None or default_val is NoDefaultValue, \
+            'default_val and default_val_func should not be both specified'
         try:
             return default_val_func(item)
         except (KeyboardInterrupt, SystemExit):
