@@ -1,6 +1,7 @@
 import inspect
 from inspect import isfunction, ismethod
 from typing import List
+import random
 
 
 __all__ = [
@@ -10,6 +11,7 @@ __all__ = [
     'update_class_def_per_ref',
     'link_with_instance',
     'ValuedContext',
+    'ValueForWithContext',
     'value_class_for_with',
     'dummy_class_for_with',
     'ClsWithCustomInit',
@@ -99,10 +101,47 @@ class ValuedContext:
         pass
 
 
-class _ValueForWith(ValuedContext):
+class _ValueForWith:
 
-    def __init__(self, value):
-        super().__init__(value)
+    _context_pool = dict()
+
+    def __init__(self, init_value=None, value_for_with_context_class=None):
+        super().__init__()
+        class_id = random.random()
+        while class_id in type(self)._context_pool:
+            class_id = random.random()
+        self._class_id = class_id
+        self._value_stack = [init_value]
+        type(self)._context_pool[class_id] = self._value_stack
+        if value_for_with_context_class is None:
+            value_for_with_context_class = ValueForWithContext
+        self._value_for_with_context_class = value_for_with_context_class
+
+    def __call__(self, value):
+        return self._value_for_with_context_class(
+            value_stack=self._value_stack,
+            value=value
+        )
+
+    @property
+    def current_value(self):
+        return self.value_stack[-1]
+
+    @current_value.setter
+    def current_value(self, val):
+        self.value_stack[-1] = val
+
+    @property
+    def value_stack(self) -> List:
+        return self._value_stack
+
+
+
+class ValueForWithContext(ValuedContext):
+
+    def __init__(self, value_stack, value):
+        super().__init__()
+        self._value_stack = value_stack
         self._value = value
 
     def __enter__(self):
@@ -113,28 +152,20 @@ class _ValueForWith(ValuedContext):
         self.value_stack.pop()
         return False
 
-    @classproperty
-    def current_value(cls):
-        return cls.value_stack[-1]
+    @property
+    def current_value(self):
+        return self.value_stack[-1]
 
     @current_value.setter
-    def current_value(cls, val):
-        cls.value_stack[-1] = val
+    def current_value(self, val):
+        self.value_stack[-1] = val
 
-    @classproperty
-    def value_stack(cls) -> List:
-        if hasattr(cls, '_value_stack'):
-            return cls._value_stack
-        else:
-            raise NotImplementedError('_value_stack is not implemented')
+    @property
+    def value_stack(self) -> List:
+        return self._value_stack
 
 
-def value_class_for_with(init_value=None):
-
-    class ValueForWith(_ValueForWith):
-        _value_stack = [init_value]
-
-    return ValueForWith
+value_class_for_with = _ValueForWith
 
 
 class dummy_class_for_with(ValuedContext):
