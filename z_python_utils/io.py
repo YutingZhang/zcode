@@ -4,6 +4,7 @@ import stat
 import logging
 from typing import List, Tuple, Callable, Union
 from shutil import rmtree
+from functools import partial
 
 
 def path_full_split(p):
@@ -135,12 +136,15 @@ class RemoveFilesWhenExit:
         self.paths = []
 
 
-def remove_files_when_finish(func):
-    def wrapper_remove_files_when_finished(*args, paths_to_remove_when_finish=None, **kwargs):
-        with RemoveFilesWhenExit(paths_to_remove_when_finish):
-            return func(*args, **kwargs)
+def _wrapper_remove_files_when_finished(*args, paths_to_remove_when_finish=None, **kwargs):
+    func = args[0]
+    the_args = args[1:]
+    with RemoveFilesWhenExit(paths_to_remove_when_finish):
+        return func(*the_args, **kwargs)
 
-    return wrapper_remove_files_when_finished
+
+def remove_files_when_finish(func):
+    return partial(_wrapper_remove_files_when_finished, func)
 
 
 def call_if_not_exisit(*args, **kwargs):
