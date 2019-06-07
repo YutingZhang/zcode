@@ -22,7 +22,7 @@ class FileCachedFunctionJob:
         with open(os.path.join(self._folder, 'content.pkl'), 'rb') as f:
             args, kwargs = pickle.load(f)
         rmtree(self._folder)
-        args[0](**args[1:], **kwargs)
+        args[0](*args[1:], **kwargs)
 
 
 class WorkerExecutor:
