@@ -14,7 +14,7 @@ class FileCachedFunctionJob:
 
     def __init__(self, *args, **kwargs):
         assert len(args) >= 1, 'first argument must be given'
-        self._folder = tempfile.mkdtemp(prefix=FileCachedFunctionJob)
+        self._folder = tempfile.mkdtemp(prefix='FileCachedFunctionJob')
         with open(os.path.join(self._folder, 'content.pkl'), 'wb') as f:
             pickle.dump((args, kwargs), f)
 
