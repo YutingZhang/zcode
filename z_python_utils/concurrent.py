@@ -34,12 +34,6 @@ class WorkerExecutor:
         self._lock = Lock()
         self._pickle_to_file = False if use_thread_pool else pickle_to_file
 
-    def submit(self, *args, **kwargs):
-        if self._pickle_to_file:
-            return self(FileCachedFunctionJob(*args, **kwargs))
-        else:
-            return self(*args, **kwargs)
-
     def join(self, wait_callback: Optional[Callable]=None, timeout: Optional[float]=None, shutdown: bool=False):
         with self._lock:
             need_wait_callback = wait_callback is not None
@@ -76,6 +70,15 @@ class WorkerExecutor:
                     self._executor.shutdown(wait=False)
 
     def __call__(self,  *args, **kwargs):
+        return self.submit(*args, **kwargs)
+
+    def submit(self, *args, **kwargs):
+        if self._pickle_to_file:
+            return self._submit(FileCachedFunctionJob(*args, **kwargs))
+        else:
+            return self._submit(*args, **kwargs)
+
+    def _submit(self, *args, **kwargs):
         with self._lock:
             if self._executor is None:
                 if self._use_thread_pool:
