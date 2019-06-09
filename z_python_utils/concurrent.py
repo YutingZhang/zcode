@@ -4,18 +4,35 @@ from threading import Lock
 from collections import deque
 from functools import partial
 import time
+import tempfile
+import pickle
+import os
+from shutil import rmtree
+
+
+class FileCachedFunctionJob:
+
+    def __init__(self, *args, **kwargs):
+        assert len(args) >= 1, 'first argument must be given'
+        self._folder = tempfile.mkdtemp(prefix='FileCachedFunctionJob')
+        with open(os.path.join(self._folder, 'content.pkl'), 'wb') as f:
+            pickle.dump((args, kwargs), f)
+
+    def __call__(self):
+        with open(os.path.join(self._folder, 'content.pkl'), 'rb') as f:
+            args, kwargs = pickle.load(f)
+        rmtree(self._folder)
+        args[0](*args[1:], **kwargs)
 
 
 class WorkerExecutor:
-    def __init__(self, max_workers: int, use_thread_pool=False):
+    def __init__(self, max_workers: int, use_thread_pool=False, pickle_to_file=False):
         self._max_workers = max_workers
         self._use_thread_pool = use_thread_pool
         self._executor = None
         self._results = deque()
         self._lock = Lock()
-
-    def submit(self, *args, **kwargs):
-        return self(*args, **kwargs)
+        self._pickle_to_file = False if use_thread_pool else pickle_to_file
 
     def join(self, wait_callback: Optional[Callable]=None, timeout: Optional[float]=None, shutdown: bool=False):
         with self._lock:
@@ -53,6 +70,15 @@ class WorkerExecutor:
                     self._executor.shutdown(wait=False)
 
     def __call__(self,  *args, **kwargs):
+        return self.submit(*args, **kwargs)
+
+    def submit(self, *args, **kwargs):
+        if self._pickle_to_file:
+            return self._submit(FileCachedFunctionJob(*args, **kwargs))
+        else:
+            return self._submit(*args, **kwargs)
+
+    def _submit(self, *args, **kwargs):
         with self._lock:
             if self._executor is None:
                 if self._use_thread_pool:
@@ -185,3 +211,4 @@ class ProcessPoolExecutorWithProgressBar:
 
     def __del__(self):
         self._close_pbar()
+
