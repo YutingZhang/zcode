@@ -4,6 +4,8 @@ import stat
 import logging
 from typing import List, Tuple, Callable, Union
 from shutil import rmtree
+import tempfile
+from .classes import value_class_for_with
 
 
 def path_full_split(p):
@@ -143,7 +145,7 @@ def remove_files_when_finish(func):
     return wrapper_remove_files_when_finished
 
 
-def call_if_not_exisit(*args, **kwargs):
+def call_if_not_exist(*args, **kwargs):
     assert len(args) >= 3, "call_with_file_existence(output_path, extra_paths, fn, ...)"
     output_path = args[0]
     assert isinstance(output_path, str), "the first argument (output_path) must be a str"
@@ -167,3 +169,22 @@ def call_if_not_exisit(*args, **kwargs):
     with TempIndicatorFile(running_file):
         return fn(*args[3:], **kwargs)
 
+
+class TemporaryToPermanentDirectory:
+
+    _context_t = value_class_for_with(None)
+
+    def __init__(self, permanent_dir: str):
+        self._tmp_dir = tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory")
+        self._permanent_dir = permanent_dir
+        self._context = type(self)._context_t(self)
+
+    def __enter__(self):
+        self._context.__enter__()
+        return self._tmp_dir
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._context.__exit__()
+
+    def sync_to_permanent(self):
+        pass
