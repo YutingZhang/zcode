@@ -14,14 +14,17 @@ class FileCachedFunctionJob:
 
     def __init__(self, *args, **kwargs):
         assert len(args) >= 1, 'first argument must be given'
-        self._folder = tempfile.mkdtemp(prefix='FileCachedFunctionJob')
+        self._folder = tempfile.mkdtemp(prefix='FileCachedFunctionJob-')
         with open(os.path.join(self._folder, 'content.pkl'), 'wb') as f:
             pickle.dump((args, kwargs), f)
 
     def __call__(self):
         with open(os.path.join(self._folder, 'content.pkl'), 'rb') as f:
             args, kwargs = pickle.load(f)
-        rmtree(self._folder)
+        try:
+            rmtree(self._folder)
+        except FileNotFoundError:
+            pass
         args[0](*args[1:], **kwargs)
 
 
