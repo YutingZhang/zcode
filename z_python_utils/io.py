@@ -210,6 +210,7 @@ class TemporaryToPermanentDirectory:
 def sync_src_to_dst(src_folder: str, dst_folder: str, delete=False):
     src_folder = os.path.abspath(src_folder)
     dst_folder = os.path.abspath(dst_folder)
+    mkpdir_p(dst_folder)
     rsync_cmd = "rsync -avz"
     if delete:
         rsync_cmd += " --delete"
