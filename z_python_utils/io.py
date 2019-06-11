@@ -188,7 +188,7 @@ class TemporaryToPermanentDirectory:
         self._executor = WorkerExecutor(max_workers=1)
 
     def __enter__(self):
-        self._tmp_dir = tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory")
+        self._tmp_dir = tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory-")
         self._context.__enter__()
         return self._tmp_dir
 
