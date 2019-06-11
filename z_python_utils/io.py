@@ -199,7 +199,7 @@ class TemporaryToPermanentDirectory:
         rmtree(self._tmp_dir)
 
     def sync_to_permanent(self):
-        print("% --> %s" % (self._tmp_dir, self._permanent_dir))
+        print("%s --> %s" % (self._tmp_dir, self._permanent_dir))
         self._executor.submit(sync_src_to_dst, self._tmp_dir, self._permanent_dir)
 
     @classmethod
