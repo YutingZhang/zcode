@@ -5,7 +5,10 @@ import logging
 from typing import List, Tuple, Callable, Union
 from shutil import rmtree
 import tempfile
+import subprocess
 from .classes import value_class_for_with
+from .concurrent import WorkerExecutor
+from .functions import call_until_success
 
 
 def path_full_split(p):
@@ -170,21 +173,50 @@ def call_if_not_exist(*args, **kwargs):
         return fn(*args[3:], **kwargs)
 
 
+# ----------------------------------------------
+# save to temporary and move to permanent
+
+
 class TemporaryToPermanentDirectory:
 
     _context_t = value_class_for_with(None)
 
     def __init__(self, permanent_dir: str):
-        self._tmp_dir = tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory")
+        self._tmp_dir = None
         self._permanent_dir = permanent_dir
         self._context = type(self)._context_t(self)
+        self._executor = WorkerExecutor(max_workers=1)
 
     def __enter__(self):
+        self._tmp_dir = tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory")
         self._context.__enter__()
         return self._tmp_dir
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._context.__exit__()
+        self.sync_to_permanent()
+        self._executor.join(shutdown=True)
+        rmtree(self._tmp_dir)
 
     def sync_to_permanent(self):
-        pass
+        print("% --> %s" % (self._tmp_dir, self._permanent_dir))
+        self._executor.submit(sync_src_to_dst, self._tmp_dir, self._permanent_dir)
+
+    @classmethod
+    def sync_current_to_permanent(cls):
+        cls._context_t.current_value.sync_to_permanent()
+
+
+def sync_src_to_dst(src_folder: str, dst_folder: str, delete=False):
+    src_folder = os.path.abspath(src_folder)
+    dst_folder = os.path.abspath(dst_folder)
+    rsync_cmd = "rsync -avz"
+    if delete:
+        rsync_cmd += " --delete"
+    call_until_success(
+        OSError, subprocess.call,
+        "%s '%s/' '%s/'" % (rsync_cmd, src_folder, dst_folder),
+        shell=True,
+        stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        executable="bash",
+    )
