@@ -196,7 +196,10 @@ class TemporaryToPermanentDirectory:
         self._context.__exit__(exc_type, exc_val, exc_tb)
         self.sync_to_permanent()
         self._executor.join(shutdown=True)
-        rmtree(self._tmp_dir)
+        try:
+            rmtree(self._tmp_dir)
+        except FileNotFoundError:
+            pass
 
     def sync_to_permanent(self):
         print("%s --> %s" % (self._tmp_dir, self._permanent_dir))

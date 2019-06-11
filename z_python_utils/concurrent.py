@@ -21,7 +21,10 @@ class FileCachedFunctionJob:
     def __call__(self):
         with open(os.path.join(self._folder, 'content.pkl'), 'rb') as f:
             args, kwargs = pickle.load(f)
-        rmtree(self._folder)
+        try:
+            rmtree(self._folder)
+        except FileNotFoundError:
+            pass
         args[0](*args[1:], **kwargs)
 
 
