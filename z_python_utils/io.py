@@ -193,7 +193,7 @@ class TemporaryToPermanentDirectory:
         return self._tmp_dir
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._context.__exit__()
+        self._context.__exit__(exc_type, exc_val, exc_tb)
         self.sync_to_permanent()
         self._executor.join(shutdown=True)
         rmtree(self._tmp_dir)
