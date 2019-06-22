@@ -181,11 +181,16 @@ class TemporaryToPermanentDirectory:
 
     _context_t = value_class_for_with(None)
 
-    def __init__(self, permanent_dir: str):
+    def __init__(self, permanent_dir: str, remove_tmp=True):
         self._tmp_dir = None
         self._permanent_dir = permanent_dir
         self._context = type(self)._context_t(self)
         self._executor = WorkerExecutor(max_workers=1)
+        self.remove_tmp = remove_tmp
+
+    @property
+    def tmp_dir(self):
+        return self._tmp_dir
 
     def __enter__(self):
         self._tmp_dir = tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory-")
@@ -196,10 +201,11 @@ class TemporaryToPermanentDirectory:
         self._context.__exit__(exc_type, exc_val, exc_tb)
         self.sync_to_permanent()
         self._executor.join(shutdown=True)
-        try:
-            rmtree(self._tmp_dir)
-        except FileNotFoundError:
-            pass
+        if self.remove_tmp:
+            try:
+                rmtree(self._tmp_dir)
+            except FileNotFoundError:
+                pass
 
     def sync_to_permanent(self):
         print("%s --> %s" % (self._tmp_dir, self._permanent_dir))
