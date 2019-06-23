@@ -32,7 +32,7 @@ class FileCachedFunctionJob:
             rmtree(self._folder)
         except FileNotFoundError:
             pass
-        
+
 
 class WorkerExecutor:
     def __init__(self, max_workers: int, use_thread_pool=False, pickle_to_file=False):
