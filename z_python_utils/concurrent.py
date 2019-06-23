@@ -27,6 +27,12 @@ class FileCachedFunctionJob:
             pass
         args[0](*args[1:], **kwargs)
 
+    def __del__(self):
+        try:
+            rmtree(self._folder)
+        except FileNotFoundError:
+            pass
+        
 
 class WorkerExecutor:
     def __init__(self, max_workers: int, use_thread_pool=False, pickle_to_file=False):
