@@ -21,17 +21,19 @@ class FileCachedFunctionJob:
     def __call__(self):
         with open(os.path.join(self._folder, 'content.pkl'), 'rb') as f:
             args, kwargs = pickle.load(f)
-        try:
-            rmtree(self._folder)
-        except FileNotFoundError:
-            pass
+        self._remove_cached()
         args[0](*args[1:], **kwargs)
 
-    def __del__(self):
+    def _remove_cached(self):
+        if not os.path.exists(self._folder):
+            return
         try:
             rmtree(self._folder)
         except FileNotFoundError:
             pass
+
+    def __del__(self):
+        self._remove_cached()
 
 
 class WorkerExecutor:
