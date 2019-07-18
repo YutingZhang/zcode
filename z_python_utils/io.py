@@ -223,9 +223,9 @@ def sync_src_to_dst(src_folder: str, dst_folder: str, delete=False):
     rsync_cmd = "rsync -avz"
     if delete:
         rsync_cmd += " --delete"
+    full_cmd = "%s '%s/' '%s/'" % (rsync_cmd, src_folder, dst_folder)
     call_until_success(
-        OSError, subprocess.call,
-        "%s '%s/' '%s/'" % (rsync_cmd, src_folder, dst_folder),
+        OSError, subprocess.call, full_cmd,
         shell=True,
         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
         executable="bash",
