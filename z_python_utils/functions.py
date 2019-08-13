@@ -164,3 +164,70 @@ call_with_timeout_callback = _CallWithTimeoutCallback.call_with_timeout_callback
 def do_nothing(*args, **kwargs):
     pass
 
+
+# insert code blocks to regular functions -----------------------------------------------------------------
+
+
+class KeyErrorInCodeBlocks(KeyError):
+    pass
+
+
+class CodeBlocks:
+
+    _code_blocks_stack = []
+
+    def __init__(self, _undefined_as_do_nothing=False, **kwargs):
+        self._undefined_as_do_nothing = _undefined_as_do_nothing
+        for k, v in kwargs.items():
+            assert isinstance(k, str) and k, "code block name must be a str"
+            assert k[0] != '_', "code block name must not start with '_'"
+            setattr(self, k, v)
+
+    def __getitem__(self, item: str):
+
+        assert isinstance(item, str) and item, "item must be a non-empty string"
+        assert item[0] != '_', "item should not start with '_'. no support on calling private function"
+
+        if hasattr(self, item):
+            code_block = getattr(self, item)
+        else:
+            if self._undefined_as_do_nothing:
+                return
+            else:
+                raise KeyErrorInCodeBlocks("No such code blocks: %s" % item)
+
+        frame = inspect.currentframe()
+        try:
+            caller_locals = frame.f_back.f_locals
+        finally:
+            del frame
+
+        non_private_caller_locals = dict(filter(lambda _k, _: _k[0] != '_', caller_locals.items()))
+        output_variable_dict = call_func_with_ignored_args(
+            code_block, non_private_caller_locals
+        )
+        if output_variable_dict is None:
+            return
+
+        for k, v in output_variable_dict.items():
+            assert isinstance(k, str) and k, "output variable name must be a str"
+            assert k[0] != '_', "should not try to modify the private variables in the caller"
+            caller_locals[k] = v
+
+    def __enter__(self):
+        type(self)._code_blocks_stack.append(self)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        type(self)._code_blocks_stack.pop()
+
+    @classmethod
+    def _call_in_context_stack(cls, item: str):
+        for code_blocks in cls._code_blocks_stack[::-1]:
+            try:
+                return code_blocks[item]
+            except KeyErrorInCodeBlocks:
+                pass
+
+
+insert_code_block = CodeBlocks._call_in_context_stack
+
