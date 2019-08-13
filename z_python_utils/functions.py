@@ -204,16 +204,12 @@ class CodeBlocks:
             del frame
 
         non_private_caller_locals = dict(filter(lambda _x: _x[0][0] != '_', caller_locals.items()))
-        output_variable_dict = call_func_with_ignored_args(
+        outputs = call_func_with_ignored_args(
             code_block, **non_private_caller_locals
         )
-        if output_variable_dict is None:
-            return
-
-        for k, v in output_variable_dict.items():
-            assert isinstance(k, str) and k, "output variable name must be a str"
-            assert k[0] != '_', "should not try to modify the private variables in the caller"
-            caller_locals[k] = v
+        if outputs is not None:
+            print('CodeBlocks: returned values ignored : ' + str(code_block), file=sys.stderr)
+        return
 
     def __enter__(self):
         type(self)._code_blocks_stack.append(self)
