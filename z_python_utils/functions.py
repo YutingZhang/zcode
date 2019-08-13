@@ -4,7 +4,7 @@ from collections import deque, OrderedDict
 import sys
 import threading
 from concurrent import futures
-from typing import Type, Tuple, List, Union, Callable
+from typing import Type, Tuple, List, Union, Callable, Optional
 
 
 def call_func_with_ignored_args(func, *args, **kwargs):
@@ -231,3 +231,14 @@ class CodeBlocks:
 
 insert_code_block = CodeBlocks._call_in_context_stack
 
+
+class BindCodeBlocks:
+    def __init__(self, _func: Callable, _code_blocks: Optional[CodeBlocks]=None, **kwargs):
+        self._code_blocks = _code_blocks
+        if self._code_blocks is None:
+            self._code_blocks = CodeBlocks(True, **kwargs)
+        self._func = _func
+
+    def __call__(self, *args, **kwargs):
+        with self._code_blocks:
+            return self._func(*args, **kwargs)
