@@ -196,15 +196,16 @@ class CodeBlocks:
             else:
                 raise KeyErrorInCodeBlocks("No such code blocks: %s" % item)
 
+        caller_locals = dict()
         frame = inspect.currentframe()
         try:
-            caller_locals = frame.f_back.f_locals
+            caller_locals = frame.f_back.f_back.f_locals    # need to go back twice since it is a class member function
         finally:
             del frame
 
-        non_private_caller_locals = dict(filter(lambda _k, _: _k[0] != '_', caller_locals.items()))
+        non_private_caller_locals = dict(filter(lambda _x: _x[0][0] != '_', caller_locals.items()))
         output_variable_dict = call_func_with_ignored_args(
-            code_block, non_private_caller_locals
+            code_block, **non_private_caller_locals
         )
         if output_variable_dict is None:
             return
