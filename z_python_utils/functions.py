@@ -207,9 +207,7 @@ class CodeBlocks:
         outputs = call_func_with_ignored_args(
             code_block, **non_private_caller_locals
         )
-        if outputs is not None:
-            print('CodeBlocks: returned values ignored : ' + str(code_block), file=sys.stderr)
-        return
+        return outputs
 
     def __enter__(self):
         type(self)._code_blocks_stack.append(self)
