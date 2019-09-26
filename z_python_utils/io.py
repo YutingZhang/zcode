@@ -193,7 +193,8 @@ class TemporaryToPermanentDirectory:
         return self._tmp_dir
 
     def __enter__(self):
-        self._tmp_dir = tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory-")
+        self._tmp_dir = os.path.join(tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory-"), 'd')
+        os.mkdir(self._tmp_dir)
         self._context.__enter__()
         return self._tmp_dir
 

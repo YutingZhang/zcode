@@ -136,7 +136,6 @@ class _ValueForWith:
         return self._value_stack
 
 
-
 class ValueForWithContext(ValuedContext):
 
     def __init__(self, value_stack, value):
