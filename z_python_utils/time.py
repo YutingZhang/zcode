@@ -1,6 +1,7 @@
 import time
 from collections import OrderedDict
 import datetime
+from typing import Sized
 
 
 def time_stamp_str():
@@ -147,3 +148,20 @@ class PeriodicRun:
 
     def resume(self):
         self.countdown.resume()
+
+
+def tic_toc_progress(a, interval: float = 1, name: str = None, print_func=print):
+
+    tic_toc_print = PeriodicRun(interval, print_func)
+
+    n = len(a) if isinstance(a, Sized) else None
+
+    for i, x in enumerate(a):
+        line = ''
+        if name:
+            line += name + ": "
+        line += '%d' % i
+        if n is not None:
+            line += '/ %d' % n
+        tic_toc_print(line)
+        yield x
