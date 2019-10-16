@@ -396,17 +396,20 @@ def recursive_merge_2dicts(d1, d2, merge_func=None):
     k1_only = k1-k2
     k2_only = k2-k1
 
+    all_keys = list(d1.keys())
+    all_keys.extend(k for k in d2.keys() if k in k2_only)
+
     q = type(d1)()
-    for k in k1_only:
-        q[k] = d1[k]
 
-    for k in k2_only:
-        if d2[k] is not ToRemove:
-            q[k] = d2[k]
-
-    for k in k_both:
-        if d2[k] is not ToRemove:
-            q[k] = recursive_merge_2dicts(d1[k], d2[k], merge_func=merge_func)
+    for k in all_keys:
+        if k in k_both:
+            if d2[k] is not ToRemove:
+                q[k] = recursive_merge_2dicts(d1[k], d2[k], merge_func=merge_func)
+        elif k in k2_only:
+            if d2[k] is not ToRemove:
+                q[k] = d2[k]
+        else:
+            q[k] = d1[k]
 
     return q
 
