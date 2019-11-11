@@ -90,3 +90,11 @@ def standardize_batchify_fn(
         batchify_fn = _BatchifyTuple(*batchify_fn_elts)
 
     return batchify_fn
+
+
+def as_numpy_object_vec(a):
+    n = len(a)
+    b = np.empty([n], dtype=object)
+    for i, elt in enumerate(a):
+        b[i] = elt
+    return b
