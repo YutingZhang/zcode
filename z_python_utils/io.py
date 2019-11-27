@@ -43,9 +43,15 @@ def relative_symlink(src, dst, overwrite=False):
             os.remove(dst)
         except OSError:
             pass
-    if os.path.exists(dst):
+    elif os.path.exists(dst):
         raise OSError('destination exists: %s' % dst)
-    os.symlink(src_rel, dst)
+    if overwrite:
+        try:
+            os.symlink(src_rel, dst)
+        except OSError:
+            pass
+    else:
+        os.symlink(src_rel, dst)
 
 
 def make_file_readonly(fn):
