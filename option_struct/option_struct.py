@@ -35,8 +35,8 @@ class OptionStruct:
     def set(self, key, value):
         if isinstance(key, str) and key.startswith("_"):
             raise ValueError("keys starts with _ are reserved")
-        assert not isinstance(value, OptionStructDef), \
-            "Cannot set with OptionStructDef"
+        assert not isinstance(value, SubOptionWrapper), \
+            "Cannot set with SubOptionWrapper"
         self.enabled_dict[key] = value
         self.user_dict[key] = value
 
@@ -48,7 +48,7 @@ class OptionStruct:
     def set_default(self, key, default_value):
         if isinstance(key, str) and key.startswith("_"):
             raise ValueError("keys starts with _ are reserved")
-        if isinstance(default_value, OptionStructDef):
+        if isinstance(default_value, SubOptionWrapper):
             assert key not in self.enabled_dict, "should not enable an entry twice"
             if key in self.user_dict:
                 self.enabled_dict[key] = default_value.option_struct(self.user_dict[key])
@@ -83,7 +83,11 @@ class OptionStruct:
 
         if not type(self)._get_namedtuple_deprecation_warning_printed:
             type(self)._get_namedtuple_deprecation_warning_printed = True
-            print("WARNING: OptionStruct: get_namedtuple is deprecated.", file=sys.stderr)
+            print(
+                "WARNING: OptionStruct: get_namedtuple is deprecated. "
+                "You are actually getting an EasyDict",
+                file=sys.stderr
+            )
 
         return self.get_edict()
 
@@ -192,11 +196,11 @@ class OptionDef:
         assert isinstance(p, OptionStruct), "p must be an OptionStruct"
 
     def _struct_def_objlevel(self, mem_func_name, finalize_check=True):
-        return OptionStructDef(self._def_obj, mem_func_name=mem_func_name, finalize_check=finalize_check)
+        return SubOptionWrapper(self._def_obj, mem_func_name=mem_func_name, finalize_check=finalize_check)
 
     @classmethod
     def struct_def(cls, mem_func_name, finalize_check=True):
-        return OptionStructDef(cls, mem_func_name=mem_func_name, finalize_check=finalize_check)
+        return SubOptionWrapper(cls, mem_func_name=mem_func_name, finalize_check=finalize_check)
 
     def __getitem__(self, item):
         finalize_check = self._finalize_check
@@ -212,7 +216,8 @@ class OptionDef:
         return p
 
 
-class OptionStructDef:
+class SubOptionWrapper:
+    # hold an OptionDef in the parent OptionDef field
 
     def __init__(self, def_cls_or_obj, mem_func_name, finalize_check="auto"):
         self._def_cls_or_obj = def_cls_or_obj
@@ -220,6 +225,7 @@ class OptionStructDef:
         self._finalize_check = finalize_check
 
     def option_struct(self, user_dict):
+        # generate option struct from this option definition
         opt_def = OptionDef(
             user_dict=user_dict,
             def_cls_or_obj=self._def_cls_or_obj,
@@ -227,3 +233,19 @@ class OptionStructDef:
         )
         opt_struct = opt_def[self._mem_func_name]
         return opt_struct
+
+
+# deprecated ------------------------------------------------------
+
+class OptionStructDef(SubOptionWrapper):
+
+    _deprecated_warning_printed = False
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not type(self)._deprecated_warning_printed:
+            print(
+                "DEPRECATION: OptionStructDef is a deprecated naming of the class, please use SubOptionWrapper",
+                file=sys.stderr
+            )
+            type(self)._deprecated_warning_printed = True
