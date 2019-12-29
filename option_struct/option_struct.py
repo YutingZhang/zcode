@@ -19,11 +19,9 @@ class OptionStructUnsetCacheNone:
 global_incore_function = value_class_for_with(False)
 
 
-class OptionStructInCoreDecrator:
-    def __init__(self, func):
-        self.func = func
+def os_incore(func):
 
-    def __call__(self, *args, **kwargs):
+    def wrap(*args, **kwargs):
         if len(args) >= 1:
             arg_self = args[0]
         else:
@@ -38,10 +36,9 @@ class OptionStructInCoreDecrator:
             c = global_incore_function(True)
 
         with c:
-            return self.func(*args, **kwargs)
+            return func(*args, **kwargs)
 
-
-os_incore = OptionStructInCoreDecrator
+    return wrap
 
 
 class OptionStructCore:
@@ -238,13 +235,12 @@ class OptionStruct(OptionStructCore):
         self._incore_function = value_class_for_with(False)
         self._core_initialized = True
 
-    @property
-    @os_incore
     def _incore(self):
         return (
                 not hasattr(self, '_core_initialized') or
                 not self._core_initialized or
-                self._incore_function.current_value
+                self._incore_function.current_value or
+                global_incore_function.current_value
         )
 
     def __setattr__(self, key, value):
@@ -269,7 +265,7 @@ class OptionDef:
         elif isinstance(user_dict, OptionStructCore):
             if finalize_check is None:
                 # None means auto become True or False at __init__,
-                # it can also be "auto" which means the be decided while calling get_optstruct
+                # it can also be "auto" which means to be decided while calling get_optstruct
                 finalize_check = False
             user_dict = user_dict.get_dict()
         else:
@@ -341,7 +337,6 @@ class OptionDef:
 class SubOption:
     # hold an OptionDef in the parent OptionDef field
 
-    @os_incore
     def __init__(self, def_cls_or_obj, mem_func_name, finalize_check="auto"):
         self._def_cls_or_obj = def_cls_or_obj
         self._mem_func_name = mem_func_name
