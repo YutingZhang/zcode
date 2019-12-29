@@ -1,19 +1,16 @@
 from collections import Iterable, OrderedDict
 from copy import copy
-from typing import Mapping
+from typing import Mapping, Union, Any, Type, List
 from z_python_utils.classes import value_class_for_with, dummy_class_for_with
 import sys
 
 
 __all__ = [
     'OptionDef',
+    'OptionDefaultValue',
     'OptionStruct',
     'SubOption',
 ]
-
-
-class OptionStructUnsetCacheNone:
-    pass
 
 
 global_incore_function = value_class_for_with(False)
@@ -39,6 +36,35 @@ def os_incore(func):
             return func(*args, **kwargs)
 
     return wrap
+
+
+class OptionStructUnsetCacheNone:
+    pass
+
+
+class OptionDefaultValue:
+    def __init__(self, value, type_mapping: Union[Type, List[(Type, Type)]] = None):
+        self._value = value
+        if type_mapping is None:
+            type_mapping = []
+        elif isinstance(type_mapping, type):
+            type_mapping = [(Any, type_mapping)]
+        else:
+            type_mapping = []
+            for input_type, target_type in type_mapping:
+                type_mapping.append((input_type, target_type))
+        self._type_mapping = type_mapping
+
+    @property
+    def default_value(self):
+        return self._value
+
+    def custom_value(self, value):
+        for input_type, target_type in self._type_mapping:
+            if input_type is None or input_type is Any or isinstance(value, input_type):
+                value = target_type(value)
+                break
+        return value
 
 
 class OptionStructCore:
@@ -108,10 +134,17 @@ class OptionStructCore:
                 default_value.add_user_dict(sub_user_dict)
             self.enabled_dict[key] = default_value
         else:
-            if key in self.user_dict:
-                self.enabled_dict[key] = self.user_dict[key]
+            if isinstance(default_value, OptionDefaultValue):
+                if key in self.user_dict:
+                    the_value = default_value.custom_value(self.user_dict[key])
+                else:
+                    the_value = default_value.default_value
             else:
-                self.enabled_dict[key] = default_value
+                if key in self.user_dict:
+                    the_value = self.user_dict[key]
+                else:
+                    the_value = default_value
+            self.enabled_dict[key] = the_value
 
     @os_incore
     def get_enabled(self, key):
