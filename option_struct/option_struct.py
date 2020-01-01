@@ -1,6 +1,6 @@
 from collections import Iterable, OrderedDict
 from copy import copy
-from typing import Mapping, Union, Any, Type, List
+from typing import Mapping, Union, Any, Type, List, Tuple
 from z_python_utils.classes import value_class_for_with, dummy_class_for_with
 import sys
 
@@ -43,7 +43,7 @@ class OptionStructUnsetCacheNone:
 
 
 class OptionDefaultValue:
-    def __init__(self, value, type_mapping: Union[Type, List[(Type, Type)]] = None):
+    def __init__(self, value, type_mapping: Union[Type, List[Tuple[Type, Type]]] = None):
         self._value = value
         if type_mapping is None:
             type_mapping = []
