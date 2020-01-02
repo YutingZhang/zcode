@@ -25,7 +25,7 @@ def os_incore(func):
             arg_self = None
 
         if isinstance(arg_self, OptionStructCore):
-            if hasattr(arg_self, '_incore_function'):
+            if '_incore_function' in dir(arg_self):
                 c = getattr(arg_self, '_incore_function')(True)
             else:
                 c = dummy_class_for_with()
@@ -268,16 +268,17 @@ class OptionStruct(OptionStructCore):
         self._incore_function = value_class_for_with(False)
         self._core_initialized = True
 
+    @property
     def _incore(self):
         return (
-                not hasattr(self, '_core_initialized') or
+                '_core_initialized' not in dir(self) or
                 not self._core_initialized or
                 self._incore_function.current_value or
                 global_incore_function.current_value
         )
 
     def __setattr__(self, key, value):
-        if self._incore or hasattr(self, key):
+        if self._incore or key in dir(self):
             return super().__setattr__(key, value)
         self[key] = value
 
@@ -291,7 +292,6 @@ class OptionDef:
 
     finalize_check_env = value_class_for_with(False)
 
-    @os_incore
     def __init__(self, user_dict=None, def_cls_or_obj=None, finalize_check=None):
         if user_dict is None:
             user_dict = dict()
@@ -325,7 +325,6 @@ class OptionDef:
         # use object level function
         setattr(self, "struct_def", self._struct_def_objlevel)
 
-    @os_incore
     def get_optstruct(self, item):
         if item in self._opts:
             return self._opts[item]
@@ -344,7 +343,6 @@ class OptionDef:
     def assert_option_struct(p):
         assert isinstance(p, OptionStructCore), "p must be an OptionStruct(Core)"
 
-    @os_incore
     def _struct_def_objlevel(self, mem_func_name, finalize_check=True):
         return SubOption(self._def_obj, mem_func_name=mem_func_name, finalize_check=finalize_check)
 
@@ -352,7 +350,6 @@ class OptionDef:
     def struct_def(cls, mem_func_name, finalize_check=True):
         return SubOption(cls, mem_func_name=mem_func_name, finalize_check=finalize_check)
 
-    @os_incore
     def __getitem__(self, item):
         finalize_check = self._finalize_check
         if finalize_check == "auto":
@@ -375,7 +372,6 @@ class SubOption:
         self._mem_func_name = mem_func_name
         self._finalize_check = finalize_check
 
-    @os_incore
     def option_struct(self, user_dict):
         # generate option struct from this option definition
         opt_def = OptionDef(
@@ -393,7 +389,6 @@ class OptionStructDef(SubOption):
 
     _deprecated_warning_printed = False
 
-    @os_incore
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not type(self)._deprecated_warning_printed:
