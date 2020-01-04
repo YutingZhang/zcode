@@ -31,7 +31,7 @@ class _NotSpecified:
 INDEX_PATH = Tuple[Any]
 
 
-def apply_to_index_paths(a, func: Callable, index_path2extra_args: Dict[INDEX_PATH, Tuple[Any]]):
+def apply_to_index_paths(a, func: Callable, index_path2extra_args: Dict[INDEX_PATH, Tuple]):
 
     b = a
     for index_path, extra_args in index_path2extra_args.items():
