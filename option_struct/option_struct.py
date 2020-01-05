@@ -1,6 +1,6 @@
 from collections import Iterable, OrderedDict
 from copy import copy
-from typing import Mapping, Union, Any, Type, List, Tuple
+from typing import Dict, Union, Any, Type, List, Tuple
 from z_python_utils.classes import value_class_for_with, dummy_class_for_with
 import sys
 
@@ -97,6 +97,10 @@ class OptionStructCore:
         self.user_dict = {**self.user_dict, **app_user_dict}
 
     @os_incore
+    def declare(self, key):
+        self.set_default(key, _SubOptionPlaceHolder(self, key))
+
+    @os_incore
     def set(self, key, value):
         if isinstance(key, str) and key.startswith("_"):
             raise ValueError("keys starts with _ are reserved")
@@ -129,9 +133,11 @@ class OptionStructCore:
                 if isinstance(sub_user_dict, OptionStructCore):
                     sub_user_dict = sub_user_dict.get_dict()
                 else:
-                    assert isinstance(sub_user_dict, Mapping), \
+                    assert isinstance(sub_user_dict, Dict), \
                         "user must specify a dict or nothing if inline OptionStruct is used"
                 default_value.add_user_dict(sub_user_dict)
+            self.enabled_dict[key] = default_value
+        elif isinstance(default_value, _SubOptionPlaceHolder):
             self.enabled_dict[key] = default_value
         else:
             if isinstance(default_value, OptionDefaultValue):
@@ -208,9 +214,14 @@ class OptionStructCore:
     @staticmethod
     def _get_dict(d):
         d = copy(d)
+        keys_to_delete = []
         for k, v in d.items():
             if isinstance(v, OptionStructCore):
                 d[k] = v.get_dict()
+            elif isinstance(v, _SubOptionPlaceHolder):
+                keys_to_delete.append(k)
+        for k in keys_to_delete:
+            d.pop(k)
         return d
 
     @os_incore
@@ -283,9 +294,53 @@ class OptionStruct(OptionStructCore):
         self[key] = value
 
     def __getattr__(self, item):
-        if self._incore or item not in self:
+        # if self._incore or item not in self:
+        #     raise AttributeError("Attribute does not exist: %s" % item)
+        if self._incore:
             raise AttributeError("Attribute does not exist: %s" % item)
+        if item not in self:
+            self.declare(item)
         return self[item]
+
+
+class _SubOptionPlaceHolder:
+    def __init__(self, option_struct: OptionStructCore, key: str):
+        self._option_struct = option_struct
+        self._key = key
+        self._suboption_struct = None
+        self._incore_function = value_class_for_with(False)
+        self._initialized = True
+
+    def convert_to_suboption_struct(self):
+        with self._incore_function(True):
+            if self._suboption_struct is None:
+                self._suboption_struct = OptionStruct()
+                self._option_struct[self._key] = self._suboption_struct
+
+    @property
+    def _incore(self):
+        return "_initialized" not in dir(self) or not self._initialized or self._incore_function.current_value
+
+    @property
+    def suboption_struct(self) -> OptionStruct:
+        self.convert_to_suboption_struct()
+        return self._suboption_struct
+
+    def __getitem__(self, item):
+        return self.suboption_struct[item]
+
+    def __setitem__(self, key, value):
+        self.suboption_struct[key] = value
+
+    def __setattr__(self, key, value):
+        if self._incore:
+            return super().__setattr__(key, value)
+        setattr(self.suboption_struct, key, value)
+
+    def __getattr__(self, item):
+        if self._incore:
+            raise AttributeError("Attribute does not exist: %s" % item)
+        return getattr(self.suboption_struct, item)
 
 
 class OptionDef:
