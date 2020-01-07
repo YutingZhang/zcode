@@ -190,9 +190,6 @@ class TemporaryToPermanentDirectory:
         self._executor = DetachableExecutorWrapper(WorkerExecutor(max_workers=1), join_func_name='join_and_shutdown')
         self.remove_tmp = remove_tmp
 
-    def __del__(self):
-        print('!!! del copy data')
-
     @property
     def tmp_dir(self):
         return self._tmp_dir

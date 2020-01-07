@@ -254,7 +254,10 @@ class _DetachableExecutorWrapperAux:
     garbage_executor_pool_lock = Lock()
     garbage_executor_collection_lock = Lock()
 
+    active = False
+
     def __init__(self):
+        type(self).active = True
         type(self).garbage_executor_collection_lock.acquire(blocking=False)
         self._thread = Thread(
             target=type(self)._garbage_collection_loop
@@ -287,7 +290,7 @@ class _DetachableExecutorWrapperAux:
 
     @classmethod
     def _garbage_collection_loop(cls):
-        while True:
+        while cls.active:
             print('!!! GC: New cycle')
             cls.garbage_executor_collection_lock.acquire()
             with cls.garbage_executor_collection_lock:
@@ -304,6 +307,7 @@ class _DetachableExecutorWrapperAux:
                         print('!!! GC: ', executor_id)
 
     def __del__(self):
+        type(self).active = False
         self._try_to_unlock_gc_loop()
         self._thread.join()
         self._try_to_unlock_gc_loop()
