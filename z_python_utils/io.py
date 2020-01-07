@@ -1,4 +1,5 @@
 import os
+import random
 import sys
 import stat
 import logging
@@ -6,6 +7,7 @@ from typing import List, Tuple, Callable, Union
 from shutil import rmtree
 import tempfile
 import subprocess
+from threading import Lock, Thread
 from .classes import value_class_for_with
 from .concurrent import WorkerExecutor
 from .functions import call_until_success
@@ -185,14 +187,34 @@ def call_if_not_exist(*args, **kwargs):
 
 class TemporaryToPermanentDirectory:
 
-    _context_t = value_class_for_with(None)
+    _executor_pool = dict()
+    _executor_pool_lock = Lock()
+    garbage_executor_pool = dict()
+    garbage_executor_pool_lock = Lock()
+    garbage_executor_collection_lock = Lock()
 
     def __init__(self, permanent_dir: str, remove_tmp=True):
         self._tmp_dir = None
         self._permanent_dir = permanent_dir
-        self._context = type(self)._context_t(self)
-        self._executor = WorkerExecutor(max_workers=1)
         self.remove_tmp = remove_tmp
+
+        with type(self)._executor_pool_lock:
+            self._executor_id = -1
+            while self._executor_id < 0 or self._executor_id in type(self)._executor_pool:
+                self._executor_id = random.randint(0, 2147483647)
+            type(self)._executor_pool[self._executor_id] = WorkerExecutor(max_workers=1)
+
+    def __del__(self):
+        # garbage collection queue for executor, do not del it immediately
+        with type(self)._executor_pool_lock:
+            executor = type(self)._executor_pool.pop(self._executor_id)
+        with type(self).garbage_executor_pool_lock:
+            type(self).garbage_executor_pool[self._executor_id] = executor
+            _ttpdgc.try_to_unlock()
+
+    @property
+    def _executor(self) -> WorkerExecutor:
+        return type(self)._executor_pool[self._executor_id]
 
     @property
     def tmp_dir(self):
@@ -201,34 +223,22 @@ class TemporaryToPermanentDirectory:
     def __enter__(self):
         self._tmp_dir = os.path.join(tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory-"), 'd')
         os.mkdir(self._tmp_dir)
-        self._context.__enter__()
         return self._tmp_dir
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._context.__exit__(exc_type, exc_val, exc_tb)
-        self.sync_to_permanent()
-        self._executor.join(shutdown=True)
-        if self.remove_tmp:
-            try:
-                rmtree(self._tmp_dir)
-            except FileNotFoundError:
-                pass
+        self.sync_to_permanent(remove_tmp=self.remove_tmp)
 
-    def sync_to_permanent(self):
+    def sync_to_permanent(self, remove_tmp=False):
         print("%s --> %s" % (self._tmp_dir, self._permanent_dir))
-        self._executor.submit(sync_src_to_dst, self._tmp_dir, self._permanent_dir)
-
-    @classmethod
-    def sync_current_to_permanent(cls):
-        cls._context_t.current_value.sync_to_permanent()
+        self._executor.submit(sync_src_to_dst, self._tmp_dir, self._permanent_dir, remove_src=remove_tmp)
 
 
-def sync_src_to_dst(src_folder: str, dst_folder: str, delete=False):
+def sync_src_to_dst(src_folder: str, dst_folder: str, sync_delete=False, remove_src=False):
     src_folder = os.path.abspath(src_folder)
     dst_folder = os.path.abspath(dst_folder)
     mkpdir_p(dst_folder)
     rsync_cmd = "rsync -avz"
-    if delete:
+    if sync_delete:
         rsync_cmd += " --delete"
     full_cmd = "%s '%s/' '%s/'" % (rsync_cmd, src_folder, dst_folder)
     call_until_success(
@@ -237,3 +247,53 @@ def sync_src_to_dst(src_folder: str, dst_folder: str, delete=False):
         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
         executable="bash",
     )
+    print("%s --> %s: Synced" % (src_folder, dst_folder), flush=True)
+    if remove_src:
+        try:
+            rmtree(src_folder)
+            print("%s: Removed" % src_folder, flush=True)
+        except FileNotFoundError:
+            pass
+
+
+def temporary_to_permanent_directory_garbage_collection():
+    while True:
+        TemporaryToPermanentDirectory.garbage_executor_collection_lock.acquire()
+        with TemporaryToPermanentDirectory.garbage_executor_collection_lock:
+            while True:
+                with TemporaryToPermanentDirectory.garbage_executor_pool_lock:
+                    garbage_ids = list(TemporaryToPermanentDirectory.garbage_executor_pool)
+                    if not garbage_ids:
+                        break
+
+                for executor_id in garbage_ids:
+                    with TemporaryToPermanentDirectory.garbage_executor_pool_lock:
+                        executor = TemporaryToPermanentDirectory.garbage_executor_pool.pop(executor_id)
+                    executor.join_and_shutdown()
+
+
+class _TemporaryToPermanentDirectoryGarbageCollection:
+
+    def __init__(self):
+        self._thread = Thread(
+            target=temporary_to_permanent_directory_garbage_collection
+        )
+        self._thread.start()
+
+    @staticmethod
+    def try_to_unlock():
+        try:
+            TemporaryToPermanentDirectory.garbage_executor_collection_lock.release()
+        except (KeyboardInterrupt, SystemError):
+            raise
+        except:
+            pass
+
+    def __del__(self):
+        self.try_to_unlock()
+        self._thread.join()
+        self.try_to_unlock()
+
+
+_ttpdgc = _TemporaryToPermanentDirectoryGarbageCollection()
+
