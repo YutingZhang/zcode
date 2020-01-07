@@ -1,6 +1,6 @@
 from typing import Union, Callable, Optional
 from concurrent import futures
-from threading import Lock
+from threading import Lock, Thread
 from collections import deque
 from functools import partial
 import time
@@ -8,6 +8,7 @@ import tempfile
 import pickle
 import os
 from shutil import rmtree
+import random
 
 
 class FileCachedFunctionJob:
@@ -222,4 +223,88 @@ class ProcessPoolExecutorWithProgressBar:
 
     def __del__(self):
         self._close_pbar()
+
+
+class DetachableExecutorWrapper:
+    """
+    the executor wrapped can be deleted before joining the executor
+    a guard thread will take care of the joining in the background
+    """
+
+    def __init__(self, executor, join_func_name: str = 'join'):
+        self._executor = executor
+        self._join_func_name = join_func_name
+
+    def __del__(self):
+        join_func = getattr(self._executor, self._join_func_name)
+        _DetachableExecutorWrapperAux.put_into_trash_queue(join_func)
+
+    def __getattr__(self, item):
+        if hasattr(self._executor, item):
+            return getattr(self._executor, item)
+        raise AttributeError("Attribute does not exist: %s" % item)
+
+
+class _DetachableExecutorWrapperAux:
+
+    guard_instance = None
+    guard_instance_lock = Lock()
+
+    garbage_executor_pool = dict()
+    garbage_executor_pool_lock = Lock()
+    garbage_executor_collection_lock = Lock()
+
+    def __init__(self):
+        type(self).garbage_executor_collection_lock.acquire(blocking=False)
+        self._thread = Thread(
+            target=type(self)._garbage_collection_loop
+        )
+        self._thread.start()
+        self._try_to_unlock_gc_loop()
+
+    @classmethod
+    def put_into_trash_queue(cls, executor_join_func):
+
+        with cls.guard_instance_lock:
+            if cls.guard_instance is None:
+                cls.guard_instance = cls()
+
+        with cls.garbage_executor_pool_lock:
+            executor_id = -1
+            while executor_id < 0 or executor_id in cls.garbage_executor_pool:
+                executor_id = random.randint(0, 2147483647)
+            cls.garbage_executor_pool[executor_id] = executor_join_func
+        cls._try_to_unlock_gc_loop()
+
+    @classmethod
+    def _try_to_unlock_gc_loop(cls):
+        try:
+            cls.garbage_executor_collection_lock.release()
+        except (KeyboardInterrupt, SystemError):
+            raise
+        except:
+            pass
+
+    @classmethod
+    def _garbage_collection_loop(cls):
+        while True:
+            print('!!! GC: New cycle')
+            cls.garbage_executor_collection_lock.acquire()
+            with cls.garbage_executor_collection_lock:
+                while True:
+                    with cls.garbage_executor_pool_lock:
+                        garbage_ids = list(cls.garbage_executor_pool)
+                        if not garbage_ids:
+                            break
+
+                    for executor_id in garbage_ids:
+                        with cls.garbage_executor_pool_lock:
+                            executor_join_func = cls.garbage_executor_pool.pop(executor_id)
+                        executor_join_func()
+                        print('!!! GC: ', executor_id)
+
+    def __del__(self):
+        self._try_to_unlock_gc_loop()
+        self._thread.join()
+        self._try_to_unlock_gc_loop()
 
