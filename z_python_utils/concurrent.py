@@ -308,6 +308,7 @@ class _DetachableExecutorWrapperAux:
                             with cls.garbage_executor_pool_lock:
                                 executor_join_func = cls.garbage_executor_pool.pop(executor_id)
                             executor_join_func()
+                            del executor_join_func
 
             cls.first_cycle_ready = False
 
