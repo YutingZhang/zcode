@@ -255,15 +255,18 @@ class _DetachableExecutorWrapperAux:
     garbage_executor_collection_lock = Lock()
 
     active = False
+    active_gc_loop_lock = Lock()
+    first_cycle_ready = False
 
     def __init__(self):
-        type(self).active = True
-        type(self).garbage_executor_collection_lock.acquire(blocking=False)
-        self._thread = Thread(
-            target=type(self)._garbage_collection_loop
-        )
-        self._thread.start()
-        self._try_to_unlock_gc_loop()
+        with type(self).active_gc_loop_lock:
+            type(self).active = True
+            self._thread = Thread(
+                target=type(self)._garbage_collection_loop
+            )
+            self._thread.start()
+        while not type(self).first_cycle_ready:
+            pass
 
     @classmethod
     def put_into_trash_queue(cls, executor_join_func):
@@ -290,21 +293,23 @@ class _DetachableExecutorWrapperAux:
 
     @classmethod
     def _garbage_collection_loop(cls):
-        while cls.active:
-            print('!!! GC: New cycle')
-            cls.garbage_executor_collection_lock.acquire()
-            with cls.garbage_executor_collection_lock:
-                while True:
-                    with cls.garbage_executor_pool_lock:
-                        garbage_ids = list(cls.garbage_executor_pool)
-                        if not garbage_ids:
-                            break
-
-                    for executor_id in garbage_ids:
+        with cls.active_gc_loop_lock:
+            while cls.active:
+                cls.garbage_executor_collection_lock.acquire()
+                cls.first_cycle_ready = True
+                with cls.garbage_executor_collection_lock:
+                    while True:
                         with cls.garbage_executor_pool_lock:
-                            executor_join_func = cls.garbage_executor_pool.pop(executor_id)
-                        executor_join_func()
-                        print('!!! GC: ', executor_id)
+                            garbage_ids = list(cls.garbage_executor_pool)
+                            if not garbage_ids:
+                                break
+
+                        for executor_id in garbage_ids:
+                            with cls.garbage_executor_pool_lock:
+                                executor_join_func = cls.garbage_executor_pool.pop(executor_id)
+                            executor_join_func()
+
+            cls.first_cycle_ready = False
 
     def __del__(self):
         type(self).active = False
