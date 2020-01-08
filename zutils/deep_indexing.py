@@ -31,18 +31,22 @@ class _NotSpecified:
 INDEX_PATH = Tuple[Any]
 
 
-def apply_to_index_paths(a, func: Callable, index_path2extra_args: Dict[INDEX_PATH, Tuple]):
+def apply_to_index_paths(
+        a, func: Callable, index_path2extra_args: Dict[INDEX_PATH, Tuple],
+        ignore_non_exists: bool = False
+):
 
     b = a
     for index_path, extra_args in index_path2extra_args.items():
         b = apply_to_single_index_path(
-            b, func, index_path, extra_args
+            b, func, index_path, extra_args, ignore_non_exists=ignore_non_exists
         )
     return b
 
 
 def apply_to_single_index_path(
-        src, func: Callable, index_path: INDEX_PATH, extra_args: Tuple[Any]
+        src, func: Callable, index_path: INDEX_PATH, extra_args: Tuple[Any],
+        ignore_non_exists: bool = False,
 ):
 
     if not isinstance(index_path, tuple):
@@ -71,12 +75,16 @@ def apply_to_single_index_path(
             )
     else:
 
-        if len(index_path) > 1:
-            dst[k] = apply_to_single_index_path(
-                src[k], func, index_path[1:], extra_args
-            )
+        if k in src:
+            if len(index_path) > 1:
+                dst[k] = apply_to_single_index_path(
+                    src[k], func, index_path[1:], extra_args
+                )
+            else:
+                dst[k] = func(src[k], *extra_args)
         else:
-            dst[k] = func(src[k], *extra_args)
+            if not ignore_non_exists:
+                raise KeyError('not such key/index: %s' % str(k))
 
     if tuple_type is not None:
         dst = tuple_type(dst)
