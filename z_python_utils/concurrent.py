@@ -284,12 +284,13 @@ class _DetachableExecutorWrapperAux:
 
     @classmethod
     def _try_to_unlock_gc_loop(cls):
-        try:
-            cls.garbage_executor_collection_lock.release()
-        except (KeyboardInterrupt, SystemError):
-            raise
-        except:
-            pass
+        with cls.garbage_executor_pool_lock:    # try to make sure not to mess up with pop from pool
+            try:
+                cls.garbage_executor_collection_lock.release()
+            except (KeyboardInterrupt, SystemError):
+                raise
+            except:
+                pass
 
     @classmethod
     def _garbage_collection_loop(cls):
@@ -297,24 +298,25 @@ class _DetachableExecutorWrapperAux:
             while cls.active:
                 cls.garbage_executor_collection_lock.acquire()
                 cls.first_cycle_ready = True
-                with cls.garbage_executor_collection_lock:
-                    while True:
-                        with cls.garbage_executor_pool_lock:
-                            garbage_ids = list(cls.garbage_executor_pool)
-                            if not garbage_ids:
-                                break
+                cls.garbage_executor_collection_lock.acquire()
+                while True:
+                    with cls.garbage_executor_pool_lock:
+                        garbage_ids = list(cls.garbage_executor_pool)
+                        if not garbage_ids:
+                            break
 
-                        for executor_id in garbage_ids:
-                            with cls.garbage_executor_pool_lock:
-                                executor_join_func = cls.garbage_executor_pool.pop(executor_id)
-                            executor_join_func()
-                            del executor_join_func
+                    for executor_id in garbage_ids:
+                        with cls.garbage_executor_pool_lock:
+                            executor_join_func = cls.garbage_executor_pool.pop(executor_id)
+                        executor_join_func()
+                        del executor_join_func
+                cls._try_to_unlock_gc_loop()
 
             cls.first_cycle_ready = False
 
     def __del__(self):
         type(self).active = False
-        self._try_to_unlock_gc_loop()
+        type(self)._try_to_unlock_gc_loop()
         self._thread.join()
-        self._try_to_unlock_gc_loop()
+        type(self)._try_to_unlock_gc_loop()
 
