@@ -260,7 +260,6 @@ class _DetachableExecutorWrapperAux:
 
     def __init__(self):
         with type(self).active_gc_loop_lock:
-            type(self).active = True
             self._thread = Thread(
                 target=type(self)._garbage_collection_loop
             )
@@ -295,28 +294,36 @@ class _DetachableExecutorWrapperAux:
     @classmethod
     def _garbage_collection_loop(cls):
         with cls.active_gc_loop_lock:
-            while cls.active:
-                cls.garbage_executor_collection_lock.acquire()
-                cls.first_cycle_ready = True
-                cls.garbage_executor_collection_lock.acquire()
-                while True:
+            cls.garbage_executor_collection_lock.acquire()
+            cls.first_cycle_ready = True
+            cls.garbage_executor_collection_lock.acquire()
+            while True:
+                with cls.garbage_executor_pool_lock:
+                    garbage_ids = list(cls.garbage_executor_pool)
+                    if not garbage_ids:
+                        break
+
+                for executor_id in garbage_ids:
                     with cls.garbage_executor_pool_lock:
-                        garbage_ids = list(cls.garbage_executor_pool)
-                        if not garbage_ids:
-                            break
+                        executor_join_func = cls.garbage_executor_pool.pop(executor_id)
+                    executor_join_func()
+                    del executor_join_func
+            cls._try_to_unlock_gc_loop()
 
-                    for executor_id in garbage_ids:
-                        with cls.garbage_executor_pool_lock:
-                            executor_join_func = cls.garbage_executor_pool.pop(executor_id)
-                        executor_join_func()
-                        del executor_join_func
-                cls._try_to_unlock_gc_loop()
-
-            cls.first_cycle_ready = False
+        cls.first_cycle_ready = False
 
     def __del__(self):
-        type(self).active = False
         type(self)._try_to_unlock_gc_loop()
         self._thread.join()
         type(self)._try_to_unlock_gc_loop()
 
+
+def main():
+    import time
+    executor = WorkerExecutor(max_workers=1)
+    dew = DetachableExecutorWrapper(executor)
+    dew.submit(time.sleep, 3)
+
+
+if __name__ == '__main__':
+    main()

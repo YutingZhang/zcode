@@ -1,6 +1,6 @@
 from .classes import *
 from .collections import *
-from .concurrent import *
+from .async_executors import *
 from .functions import *
 from .io import *
 from .misc import *

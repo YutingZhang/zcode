@@ -6,7 +6,7 @@ from typing import List, Tuple, Callable, Union
 from shutil import rmtree
 import tempfile
 import subprocess
-from .concurrent import WorkerExecutor, DetachableExecutorWrapper
+from .async_executors import WorkerExecutor, DetachableExecutorWrapper
 from .functions import call_until_success
 
 
