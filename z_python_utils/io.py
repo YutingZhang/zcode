@@ -217,14 +217,16 @@ class TemporaryToPermanentDirectory:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.sync_to_permanent(remove_tmp=self.remove_tmp)
+        self._removal_blocker = None
         self._entered = False
 
     def sync_to_permanent(self, remove_tmp=False):
-        assert self._entered, "sync_to_permanent can be called within context4"
+        assert self._entered, "sync_to_permanent can be called within context"
         print("%s --> %s" % (self._tmp_dir, self._permanent_dir))
         self._executor.submit(sync_src_to_dst, self._tmp_dir, self._permanent_dir, remove_src=remove_tmp)
 
     def get_removal_blocker(self) -> TempIndicatorFileHolder:
+        assert self._entered, "get_removal_blocker can be called within context"
         if self._removal_blocker is None:
             self._removal_blocker = TempIndicatorFileHolder(os.path.join(self._tmp_dir_root, 'DO_NOT_REMOVE'))
         return self._removal_blocker
