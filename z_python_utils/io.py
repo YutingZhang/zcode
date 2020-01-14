@@ -185,22 +185,28 @@ def call_if_not_exist(*args, **kwargs):
 class TemporaryToPermanentDirectory:
 
     def __init__(self, permanent_dir: str, remove_tmp=True):
+        self._tmp_dir_root = None
         self._tmp_dir = None
         self._permanent_dir = permanent_dir
         self._executor = DetachableExecutorWrapper(WorkerExecutor(max_workers=1), join_func_name='join_and_shutdown')
         self.remove_tmp = remove_tmp
+        self._entered = False
 
     @property
     def tmp_dir(self):
         return self._tmp_dir
 
     def __enter__(self):
-        self._tmp_dir = os.path.join(tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory-"), 'd')
+        assert not self._entered, 'You can enter once'
+        self._entered = True
+        self._tmp_dir_root = tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory-")
+        self._tmp_dir = os.path.join(self._tmp_dir_root, 'd')
         os.mkdir(self._tmp_dir)
         return self._tmp_dir
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.sync_to_permanent(remove_tmp=self.remove_tmp)
+        self._entered = False
 
     def sync_to_permanent(self, remove_tmp=False):
         print("%s --> %s" % (self._tmp_dir, self._permanent_dir))
