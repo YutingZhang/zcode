@@ -1,6 +1,7 @@
 import os
 import sys
 import stat
+import time
 import logging
 from typing import List, Tuple, Callable, Union
 from shutil import rmtree
@@ -120,6 +121,15 @@ class TempIndicatorFile:
             pass
 
 
+class TempIndicatorFileHolder:
+    def __init__(self, filename: str):
+        self._my_context = TempIndicatorFile(filename)
+        self._my_context.__enter__()
+
+    def __del__(self):
+        self._my_context.__exit__(None, None, None)
+
+
 class RemoveFilesWhenExit:
     def __init__(self, paths: Union[str, List[str], Tuple[str]]):
         if isinstance(paths, str):
@@ -191,13 +201,14 @@ class TemporaryToPermanentDirectory:
         self._executor = DetachableExecutorWrapper(WorkerExecutor(max_workers=1), join_func_name='join_and_shutdown')
         self.remove_tmp = remove_tmp
         self._entered = False
+        self._removal_blocker = None
 
     @property
     def tmp_dir(self):
         return self._tmp_dir
 
     def __enter__(self):
-        assert not self._entered, 'You can enter once'
+        assert not self._entered, 'You can enter the context once'
         self._entered = True
         self._tmp_dir_root = tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory-")
         self._tmp_dir = os.path.join(self._tmp_dir_root, 'd')
@@ -209,8 +220,14 @@ class TemporaryToPermanentDirectory:
         self._entered = False
 
     def sync_to_permanent(self, remove_tmp=False):
+        assert self._entered, "sync_to_permanent can be called within context4"
         print("%s --> %s" % (self._tmp_dir, self._permanent_dir))
         self._executor.submit(sync_src_to_dst, self._tmp_dir, self._permanent_dir, remove_src=remove_tmp)
+
+    def get_removal_blocker(self) -> TempIndicatorFileHolder:
+        if self._removal_blocker is None:
+            self._removal_blocker = TempIndicatorFileHolder(os.path.join(self._tmp_dir_root, 'DO_NOT_REMOVE'))
+        return self._removal_blocker
 
 
 def sync_src_to_dst(src_folder: str, dst_folder: str, sync_delete=False, remove_src=False):
@@ -229,6 +246,10 @@ def sync_src_to_dst(src_folder: str, dst_folder: str, sync_delete=False, remove_
     )
     print("%s --> %s: Synced" % (src_folder, dst_folder), flush=True)
     if remove_src:
+        src_root = os.path.dirname(src_folder)
+        src_donot_remove_path = os.path.join(src_root, 'DO_NOT_REMOVE')
+        while os.path.exists(src_donot_remove_path):
+            time.sleep(30)
         try:
             rmtree(src_folder)
             print("%s: Removed" % src_folder, flush=True)
