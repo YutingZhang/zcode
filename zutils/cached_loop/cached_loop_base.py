@@ -1,7 +1,11 @@
 import typing
 
 
-__all__ = ['CachedLoopBase', 'iter_to_kwargs_for_cached_loop']
+__all__ = [
+    'CachedLoopBase',
+    'iter_to_kwargs_for_cached_loop',
+    'mapping_to_func',
+]
 
 
 def _default_submit(*args, **kwargs):
@@ -148,3 +152,15 @@ def iter_to_kwargs_for_cached_loop(a):
     func = _Iter2DataFunc(a)
 
     return dict(function=func, indexes=func)
+
+
+class _Mapping2Func:
+    def __init__(self, a: typing.Mapping):
+        self.a = a
+
+    def __call__(self, item):
+        return self.a[item]
+
+
+def mapping_to_func(a: typing.Mapping):
+    return _Mapping2Func(a)

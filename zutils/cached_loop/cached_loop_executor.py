@@ -20,7 +20,9 @@ class CachedLoopExecutor(CachedLoopBase):
             batched: bool = False
     ):
         if max_workers is not None and max_workers >= 1:
-            self.executor = WorkerExecutor(max_workers=max_workers, use_thread_pool=use_thread_pool, pickle_to_file=pickle_to_file)
+            self.executor = WorkerExecutor(
+                max_workers=max_workers, use_thread_pool=use_thread_pool, pickle_to_file=pickle_to_file
+            )
             if cache_size is None:
                 cache_size = max_workers * 2
             super().__init__(
