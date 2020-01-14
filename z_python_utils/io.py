@@ -254,7 +254,7 @@ def sync_src_to_dst(src_folder: str, dst_folder: str, sync_delete=False, remove_
         while os.path.exists(src_donot_remove_path):
             time.sleep(30)
         try:
-            rmtree(src_folder)
+            shutil.rmtree(src_folder)
             print("%s: Removed" % src_folder, flush=True)
         except FileNotFoundError:
             pass
@@ -267,15 +267,15 @@ def archive_if_exists(path: str, archive_postfix='.archive-'):
 
 
 def get_path_with_datetime(path: str, postfix='.date-', archive_postfix='.archive-'):
-    if os.path.exists(path):
-        if os.path.islink(path):
-            try:
-                os.unlink(path)
-            except (FileExistsError, OSError, FileNotFoundError):
-                pass
-        else:
-            archive_if_exists(path, archive_postfix=archive_postfix)
+    if os.path.islink(path):
+        try:
+            os.unlink(path)
+        except (FileExistsError, OSError, FileNotFoundError):
+            pass
+    elif os.path.exists(path):
+        archive_if_exists(path, archive_postfix=archive_postfix)
 
     path_with_date = path + postfix + timestamp_for_filename()
+    mkpdir_p(path)
     relative_symlink(path_with_date, path)
     return path_with_date
