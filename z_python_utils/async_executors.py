@@ -318,6 +318,12 @@ class _DetachableExecutorWrapperAux:
         type(self)._try_to_unlock_gc_loop()
 
 
+def async_detechable_thread_call(*args, **kwargs):
+    thread = Thread(target=args[0], args=args[1:], kwargs=kwargs)
+    thread.start()
+    _ = DetachableExecutorWrapper(thread, join_func_name='join')
+
+
 def main():
     import time
     executor = WorkerExecutor(max_workers=1)
