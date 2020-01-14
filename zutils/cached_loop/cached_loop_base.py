@@ -137,16 +137,13 @@ class _Iter2DataFunc:
         return v
 
     def __iter__(self):
-        if self._stopped:
-            raise StopIteration
-        yield self._current
+        while not self._stopped:
+            yield self._current
+        raise StopIteration
 
 
-def iter_to_kwargs_for_cached_loop(a, size: typing.Optional[int] = None):
+def iter_to_kwargs_for_cached_loop(a):
     assert isinstance(a, typing.Iterable), "a must be an iterable"
-    if size is None:
-        assert isinstance(a, typing.Sized), "a must be an sized object if size is not given"
-        size = len(a)
 
     func = _Iter2DataFunc(a)
 
