@@ -4,11 +4,12 @@ import stat
 import time
 import logging
 from typing import List, Tuple, Callable, Union
-from shutil import rmtree
+import shutil
 import tempfile
 import subprocess
 from .async_executors import WorkerExecutor, DetachableExecutorWrapper
 from .functions import call_until_success
+from .time import timestamp_for_filename
 
 
 def path_full_split(p):
@@ -145,7 +146,7 @@ class RemoveFilesWhenExit:
             return
         for p in self.paths:
             try:
-                rmtree(os.path.abspath(p))
+                shutil.rmtree(os.path.abspath(p))
             except (KeyboardInterrupt, SystemExit):
                 raise
             except:
@@ -257,3 +258,24 @@ def sync_src_to_dst(src_folder: str, dst_folder: str, sync_delete=False, remove_
             print("%s: Removed" % src_folder, flush=True)
         except FileNotFoundError:
             pass
+
+
+def archive_if_exists(path: str, archive_postfix='.archive-'):
+    if os.path.exists(path):
+        archive_path = path + archive_postfix + timestamp_for_filename()
+        shutil.move(path, archive_path)
+
+
+def get_path_with_datetime(path: str, postfix='.date-', archive_postfix='.archive-'):
+    if os.path.exists(path):
+        if os.path.islink(path):
+            try:
+                os.unlink(path)
+            except (FileExistsError, OSError, FileNotFoundError):
+                pass
+        else:
+            archive_if_exists(path, archive_postfix=archive_postfix)
+
+    path_with_date = path + postfix + timestamp_for_filename()
+    relative_symlink(path_with_date, path)
+    return path_with_date
