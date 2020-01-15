@@ -265,6 +265,23 @@ def add_filename_postfix_before_ext(path: str, postfix: str):
     return bare_path + postfix + ext
 
 
+def _add_postfix_until_not_exist(path: str, postfix: str, postfix_before_ext: bool = False):
+    i = 0
+    while True:
+        if i > 0:
+            final_postfix = postfix + "-%d" % i
+        else:
+            final_postfix = postfix
+        if postfix_before_ext:
+            final_path = add_filename_postfix_before_ext(path, final_postfix)
+        else:
+            final_path = path + final_postfix
+        if not os.path.exists(final_path):
+            break
+        i += 1
+    return final_path
+
+
 def archive_if_exists(
         path: str, archive_postfix='.archive-', datetime_str: str = None, postfix_before_ext: bool = False,
         ref_path: Optional[str] = None
@@ -275,16 +292,9 @@ def archive_if_exists(
         if not datetime_str:
             datetime_str = timestamp_for_filename()
 
-        if postfix_before_ext:
-            archive_path = add_filename_postfix_before_ext(path, archive_postfix + datetime_str)
-        else:
-            archive_path = path + archive_postfix + datetime_str
-
-        base_archive_path = archive_path
-        i = 0
-        while os.path.exists(archive_path):
-            i += 1
-            archive_path = base_archive_path + "-%d" % i
+        archive_path = _add_postfix_until_not_exist(
+            path, archive_postfix + datetime_str, postfix_before_ext=postfix_before_ext
+        )
 
         print('Archive: %s -> %s' % (path, archive_path))
         try:
@@ -313,10 +323,9 @@ def get_path_with_datetime(
     if not datetime_str:
         datetime_str = timestamp_for_filename()
 
-    if postfix_before_ext:
-        path_with_date = add_filename_postfix_before_ext(path, postfix + datetime_str)
-    else:
-        path_with_date = path + postfix + datetime_str
+    path_with_date = _add_postfix_until_not_exist(
+        path, postfix + datetime_str, postfix_before_ext=postfix_before_ext
+    )
 
     mkpdir_p(path)
     relative_symlink(path_with_date, path, overwrite=True)
