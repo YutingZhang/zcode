@@ -223,7 +223,7 @@ class TemporaryToPermanentDirectory:
 
     def sync_to_permanent(self, remove_tmp=False):
         assert self._entered, "sync_to_permanent can be called within context"
-        print("%s --> %s" % (self._tmp_dir, self._permanent_dir))
+        print("%s --> %s : Request Syncing" % (self._tmp_dir, self._permanent_dir), flush=True)
         self._executor.submit(sync_src_to_dst, self._tmp_dir, self._permanent_dir, remove_src=remove_tmp)
 
     def get_removal_blocker(self) -> TempIndicatorFileHolder:
