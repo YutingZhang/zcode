@@ -78,4 +78,8 @@ def z_python_utils_dir():
     return os.path.dirname(__file__)
 
 
+def zcode_dir():
+    return os.path.dirname(z_python_utils_dir())
+
+
 pyu_dir = z_python_utils_dir
