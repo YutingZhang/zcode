@@ -3,7 +3,7 @@ import sys
 import stat
 import time
 import logging
-from typing import List, Tuple, Callable, Union
+from typing import List, Tuple, Callable, Union, Optional
 import shutil
 import tempfile
 import subprocess
@@ -266,14 +266,17 @@ def add_filename_postfix_before_ext(path: str, postfix: str):
 
 
 def archive_if_exists(
-        path: str, archive_postfix='.archive-', datetime_str: str = None, postfix_before_ext: bool = False
+        path: str, archive_postfix='.archive-', datetime_str: str = None, postfix_before_ext: bool = False,
+        ref_path: Optional[str] = None
 ) -> Union[str, None]:
-    if os.path.exists(path):
+    if not ref_path:
+        ref_path = path
+    if os.path.exists(ref_path):
         if not datetime_str:
             datetime_str = timestamp_for_filename()
 
         if postfix_before_ext:
-            archive_path = add_filename_postfix_before_ext(path,archive_postfix + datetime_str)
+            archive_path = add_filename_postfix_before_ext(path, archive_postfix + datetime_str)
         else:
             archive_path = path + archive_postfix + datetime_str
 
