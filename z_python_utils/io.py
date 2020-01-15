@@ -280,8 +280,17 @@ def archive_if_exists(
         else:
             archive_path = path + archive_postfix + datetime_str
 
+        base_archive_path = archive_path
+        i = 0
+        while os.path.exists(archive_path):
+            i += 1
+            archive_path = base_archive_path + "-%d" % i
+
         print('Archive: %s -> %s' % (path, archive_path))
-        shutil.move(path, archive_path)
+        try:
+            shutil.move(path, archive_path)
+        except (OSError, FileExistsError, FileNotFoundError):
+            pass
         return archive_path
     return None
 
