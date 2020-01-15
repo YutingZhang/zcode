@@ -260,13 +260,36 @@ def sync_src_to_dst(src_folder: str, dst_folder: str, sync_delete=False, remove_
             pass
 
 
-def archive_if_exists(path: str, archive_postfix='.archive-'):
+def add_filename_postfix_before_ext(path: str, postfix: str):
+    bare_path, ext = os.path.splitext(path)
+    return bare_path + postfix + ext
+
+
+def archive_if_exists(
+        path: str, archive_postfix='.archive-', datetime_str: str = None, postfix_before_ext: bool = False
+) -> Union[str, None]:
     if os.path.exists(path):
-        archive_path = path + archive_postfix + timestamp_for_filename()
+        if not datetime_str:
+            datetime_str = timestamp_for_filename()
+
+        if postfix_before_ext:
+            archive_path = add_filename_postfix_before_ext(path,archive_postfix + datetime_str)
+        else:
+            archive_path = path + archive_postfix + datetime_str
+
+        print('Archive: %s -> %s' % (path, archive_path))
         shutil.move(path, archive_path)
+        return archive_path
+    return None
 
 
-def get_path_with_datetime(path: str, postfix='.date-', archive_postfix='.archive-'):
+def get_path_with_datetime(
+        path: str,
+        postfix: str = '.date-', archive_postfix: str = '.archive-',
+        datetime_str: str = None,
+        postfix_before_ext: bool = False,
+) -> str:
+
     if os.path.islink(path):
         try:
             os.unlink(path)
@@ -275,7 +298,14 @@ def get_path_with_datetime(path: str, postfix='.date-', archive_postfix='.archiv
     elif os.path.exists(path):
         archive_if_exists(path, archive_postfix=archive_postfix)
 
-    path_with_date = path + postfix + timestamp_for_filename()
+    if not datetime_str:
+        datetime_str = timestamp_for_filename()
+
+    if postfix_before_ext:
+        path_with_date = add_filename_postfix_before_ext(path, postfix + datetime_str)
+    else:
+        path_with_date = path + postfix + datetime_str
+
     mkpdir_p(path)
     relative_symlink(path_with_date, path)
     return path_with_date
