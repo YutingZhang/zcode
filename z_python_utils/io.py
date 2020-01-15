@@ -310,5 +310,5 @@ def get_path_with_datetime(
         path_with_date = path + postfix + datetime_str
 
     mkpdir_p(path)
-    relative_symlink(path_with_date, path)
+    relative_symlink(path_with_date, path, overwrite=True)
     return path_with_date
