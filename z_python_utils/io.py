@@ -1,15 +1,16 @@
 import os
 import sys
 import stat
-import time
 import logging
 from typing import List, Tuple, Callable, Union, Optional
 import shutil
 import tempfile
 import subprocess
+from threading import Lock
 from .async_executors import WorkerExecutor, DetachableExecutorWrapper
 from .functions import call_until_success
 from .time import timestamp_for_filename
+from .classes import dummy_class_for_with
 
 
 def path_full_split(p):
@@ -192,6 +193,17 @@ def call_if_not_exist(*args, **kwargs):
 # ----------------------------------------------
 # save to temporary and move to permanent
 
+class LockHolder:
+    def __init__(self, lock: Lock):
+        self._lock = lock
+        self._lock.acquire()
+
+    def __del__(self):
+        try:
+            self._lock.release()
+        except RuntimeError:
+            pass
+
 
 class TemporaryToPermanentDirectory:
 
@@ -199,10 +211,13 @@ class TemporaryToPermanentDirectory:
         self._tmp_dir_root = None
         self._tmp_dir = None
         self._permanent_dir = permanent_dir
-        self._executor = DetachableExecutorWrapper(WorkerExecutor(max_workers=1), join_func_name='join_and_shutdown')
+        self._executor = DetachableExecutorWrapper(
+            WorkerExecutor(max_workers=1, use_thread_pool=True), join_func_name='join_and_shutdown'
+        )
         self.remove_tmp = remove_tmp
-        self._entered = False
+        self._entered = 0
         self._removal_blocker = None
+        self._rm_lock = None
 
     @property
     def tmp_dir(self):
@@ -210,30 +225,37 @@ class TemporaryToPermanentDirectory:
 
     def __enter__(self):
         assert not self._entered, 'You can enter the context once'
-        self._entered = True
+        self._entered = 1
         self._tmp_dir_root = tempfile.mkdtemp(prefix="TemporaryToPermanentDirectory-")
         self._tmp_dir = os.path.join(self._tmp_dir_root, 'd')
         os.mkdir(self._tmp_dir)
+        self._rm_lock = Lock()
+        self._entered = 2
         return self._tmp_dir
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.sync_to_permanent(remove_tmp=self.remove_tmp)
         self._removal_blocker = None
-        self._entered = False
+        self._rm_lock = None
+        self._entered = 0
 
     def sync_to_permanent(self, remove_tmp=False):
-        assert self._entered, "sync_to_permanent can be called within context"
+        assert self._entered >= 2, "sync_to_permanent can be called within context"
         print("%s --> %s : Request Syncing" % (self._tmp_dir, self._permanent_dir), flush=True)
-        self._executor.submit(sync_src_to_dst, self._tmp_dir, self._permanent_dir, remove_src=remove_tmp)
+        self._executor.submit(
+            sync_src_to_dst,
+            self._tmp_dir_root, self._permanent_dir, remove_src=remove_tmp,
+            rm_lock=self._rm_lock if remove_tmp else None
+        )
 
-    def get_removal_blocker(self) -> TempIndicatorFileHolder:
-        assert self._entered, "get_removal_blocker can be called within context"
+    def get_removal_blocker(self) -> LockHolder:
+        assert self._entered >= 2, "get_removal_blocker can be called within context"
         if self._removal_blocker is None:
-            self._removal_blocker = TempIndicatorFileHolder(os.path.join(self._tmp_dir_root, 'DO_NOT_REMOVE'))
+            self._removal_blocker = LockHolder(self._rm_lock)
         return self._removal_blocker
 
 
-def sync_src_to_dst(src_folder: str, dst_folder: str, sync_delete=False, remove_src=False):
+def sync_src_to_dst(src_folder: str, dst_folder: str, sync_delete=False, remove_src=False, rm_lock: Lock = None):
     src_folder = os.path.abspath(src_folder)
     dst_folder = os.path.abspath(dst_folder)
     mkpdir_p(dst_folder)
@@ -249,15 +271,14 @@ def sync_src_to_dst(src_folder: str, dst_folder: str, sync_delete=False, remove_
     )
     print("%s --> %s: Synced" % (src_folder, dst_folder), flush=True)
     if remove_src:
-        src_root = os.path.dirname(src_folder)
-        src_donot_remove_path = os.path.join(src_root, 'DO_NOT_REMOVE')
-        while os.path.exists(src_donot_remove_path):
-            time.sleep(30)
-        try:
-            shutil.rmtree(src_folder)
-            print("%s: Removed" % src_folder, flush=True)
-        except FileNotFoundError:
-            pass
+        if rm_lock is None:
+            rm_lock = dummy_class_for_with()
+        with rm_lock:
+            try:
+                shutil.rmtree(src_folder)
+                print("%s: Removed" % src_folder, flush=True)
+            except FileNotFoundError:
+                print("%s: Failed to Remove" % src_folder, flush=True)
 
 
 def add_filename_postfix_before_ext(path: str, postfix: str):
