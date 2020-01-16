@@ -245,7 +245,8 @@ class TemporaryToPermanentDirectory:
         self._executor.submit(
             sync_src_to_dst,
             self._tmp_dir, self._permanent_dir, remove_src=remove_tmp,
-            rm_lock=self._rm_lock if remove_tmp else None
+            rm_lock=self._rm_lock if remove_tmp else None,
+            src_root_to_remove=self._tmp_dir_root
         )
 
     def get_removal_blocker(self) -> LockHolder:
@@ -255,7 +256,11 @@ class TemporaryToPermanentDirectory:
         return self._removal_blocker
 
 
-def sync_src_to_dst(src_folder: str, dst_folder: str, sync_delete=False, remove_src=False, rm_lock: Lock = None):
+def sync_src_to_dst(
+        src_folder: str, dst_folder: str,
+        sync_delete=False, remove_src=False, rm_lock: Lock = None,
+        src_root_to_remove: str = None,
+):
     src_folder = os.path.abspath(src_folder)
     dst_folder = os.path.abspath(dst_folder)
     mkpdir_p(dst_folder)
@@ -271,6 +276,8 @@ def sync_src_to_dst(src_folder: str, dst_folder: str, sync_delete=False, remove_
     )
     print("%s --> %s: Synced" % (src_folder, dst_folder), flush=True)
     if remove_src:
+        if src_root_to_remove is None:
+            src_root_to_remove = src_folder
         if rm_lock is None:
             rm_lock = dummy_class_for_with()
         with rm_lock:
