@@ -244,7 +244,7 @@ class TemporaryToPermanentDirectory:
         print("%s --> %s : Request Syncing" % (self._tmp_dir, self._permanent_dir), flush=True)
         self._executor.submit(
             sync_src_to_dst,
-            self._tmp_dir_root, self._permanent_dir, remove_src=remove_tmp,
+            self._tmp_dir, self._permanent_dir, remove_src=remove_tmp,
             rm_lock=self._rm_lock if remove_tmp else None
         )
 
