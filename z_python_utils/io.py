@@ -358,3 +358,24 @@ def get_path_with_datetime(
     mkpdir_p(path)
     relative_symlink(path_with_date, path, overwrite=True)
     return path_with_date
+
+
+def different_subfolders_from_list(a: List[str]) -> (List[str], str):
+    a = [os.path.abspath(x) for x in a]
+    if len(a) == 0:
+        return [], ''
+    if len(a) == 1:
+        return [os.path.basename(a[0])], os.path.dirname(a[0])
+
+    c = a[0]
+    for x in a[1:]:
+        i = -1
+        for i, c_i, x_i in enumerate(zip(c, x)):
+            if c_i != x_i:
+                break
+        c = c[:i+1]
+
+    common_root = c[:-c[::-1].find('/')]
+    n = len(common_root) + 1
+    subfolders = [x[n:] for x in a]
+    return subfolders, common_root
