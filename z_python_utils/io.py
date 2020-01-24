@@ -373,7 +373,7 @@ def different_subfolders_from_list(a: List[str]) -> (List[str], str):
         for i, (c_i, x_i) in enumerate(zip(c, x)):
             if c_i != x_i:
                 break
-        c = c[:i]
+        c = c[:i+1]
 
     common_root = c[:-(c[::-1].find('/')+1)]
     n = len(common_root) + 1
