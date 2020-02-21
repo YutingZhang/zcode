@@ -71,14 +71,14 @@ def apply_to_single_index_path(
     if index_iter is not None:
         for subkey in src:
             dst[subkey] = apply_to_single_index_path(
-                src, func, (subkey,) + index_path[1:], extra_args
+                src, func, (subkey,) + index_path[1:], extra_args, ignore_non_exists=ignore_non_exists
             )
     else:
 
         if k in src:
             if len(index_path) > 1:
                 dst[k] = apply_to_single_index_path(
-                    src[k], func, index_path[1:], extra_args
+                    src[k], func, index_path[1:], extra_args, ignore_non_exists=ignore_non_exists
                 )
             else:
                 dst[k] = func(src[k], *extra_args)
