@@ -283,9 +283,9 @@ def sync_src_to_dst(
         with rm_lock:
             try:
                 shutil.rmtree(src_folder)
-                print("%s: Removed" % src_folder, flush=True)
+                print("%s: Removed" % src_root_to_remove, flush=True)
             except FileNotFoundError:
-                print("%s: Failed to Remove" % src_folder, flush=True)
+                print("%s: Failed to Remove" % src_root_to_remove, flush=True)
 
 
 def add_filename_postfix_before_ext(path: str, postfix: str):
