@@ -361,6 +361,7 @@ def get_path_with_datetime(
 
 
 def different_subfolders_from_list(a: List[str]) -> (List[str], str):
+    # remove common parent folders, only leave the subfolder name with difference
     a = [os.path.abspath(x) for x in a]
     if len(a) == 0:
         return [], ''

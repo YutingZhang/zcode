@@ -142,7 +142,7 @@ immediate_executor = ImmediateExecutor()
 class ProcessPoolExecutorWithProgressBar:
 
     def __init__(
-            self, num_workers: int=0, num_tasks: Optional[int]=None, title: Optional[str]=None):
+            self, num_workers: int = 0, num_tasks: Optional[int]=None, title: Optional[str]=None):
 
         self._pbar = None
         self._num_workers = num_workers
