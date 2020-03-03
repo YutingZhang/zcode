@@ -35,7 +35,7 @@ class FolderToLMDB:
 
         all_filenames = all_valid_filenames - locked_filenames
         if not overwrite_existing:
-            existing_keys = set(self._txn.cursor())
+            existing_keys = set(key for key, _ in self._txn.cursor())
             all_filenames = set(fn for fn in all_filenames if fn not in existing_keys)
 
         if show_progress_bar:
