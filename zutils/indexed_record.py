@@ -140,6 +140,7 @@ class IndexedRecord:
         return a
 
     def __setitem__(self, key, value):
+        assert self._write, "write access not enabled"
         with self._lock:
             meta_list = self._key2meta.pop(key, [])
             self._key2meta[key] = meta_list   # make sure the ordering of the index is the same as the data in the file
