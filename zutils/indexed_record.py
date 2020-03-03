@@ -4,7 +4,7 @@ import pyarrow
 import random
 import snappy
 import shutil
-from typing import Callable
+from typing import Callable, List, Tuple
 from z_python_utils.io import mkdir_p
 from threading import Lock, Thread
 import time
@@ -161,6 +161,14 @@ class IndexedRecord:
 
     def __contains__(self, key):
         return key in self._key2meta
+
+    def get_batch(self, keys: List[str]) -> List:
+        kl = list((k, i, self._key2meta[k][-1][0]) for i, k in enumerate(keys))
+        kl = sorted(kl, key=lambda x: x[2])
+        values = [None] * len(kl)
+        for k, i, _ in kl:
+            values[i] = self[k]
+        return values
 
     def items(self):
         for key in iter(self):
