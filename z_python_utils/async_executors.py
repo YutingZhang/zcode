@@ -142,7 +142,9 @@ immediate_executor = ImmediateExecutor()
 class ProcessPoolExecutorWithProgressBar:
 
     def __init__(
-            self, num_workers: int = 0, num_tasks: Optional[int]=None, title: Optional[str]=None):
+            self, num_workers: int = 0, num_tasks: Optional[int] = None, title: Optional[str] = None,
+            use_thread_pool: bool = False, store_results: bool = False
+    ):
 
         self._pbar = None
         self._num_workers = num_workers
@@ -152,7 +154,10 @@ class ProcessPoolExecutorWithProgressBar:
         if self._num_workers <= 0:
             self._executor = immediate_executor
         else:
-            self._executor = futures.ProcessPoolExecutor(max_workers=num_workers)
+            if use_thread_pool:
+                self._executor = futures.ThreadPoolExecutor(max_workers=num_workers)
+            else:
+                self._executor = futures.ProcessPoolExecutor(max_workers=num_workers)
 
         if self._need_pbar:
             if self._title:
@@ -166,6 +171,9 @@ class ProcessPoolExecutorWithProgressBar:
                 self._create_pbar(total=self._num_tasks)
             else:
                 print(" ...")
+
+        self._store_results = store_results
+        self._result_vals = []
 
         self._open_for_submit = True
 
@@ -217,12 +225,19 @@ class ProcessPoolExecutorWithProgressBar:
         self._create_pbar(total=len(self._results))
         while self._results:
             r = self._results.popleft()
-            r.result()
+            r_val = r.result()
+            if self._store_results:
+                self._result_vals.append(r_val)
+            del r_val
             self._inc_pbar()
         self._close_pbar()
 
     def __del__(self):
         self._close_pbar()
+
+    def get_results(self):
+        assert self._store_results, "results are not stored"
+        return self._result_vals
 
 
 class DetachableExecutorWrapper:
