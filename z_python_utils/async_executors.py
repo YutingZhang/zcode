@@ -206,6 +206,9 @@ class ProcessPoolExecutorWithProgressBar:
         r = self._executor.submit(*args, **kwargs)
         if self._num_workers > 0:
             self._results.append(r)
+        else:
+            if self._store_results:
+                self._result_vals.append(r.result())
         self._inc_pbar()
         return r
 
