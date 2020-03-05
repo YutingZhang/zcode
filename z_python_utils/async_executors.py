@@ -115,7 +115,7 @@ class _ImmediateResult:
         self._result = result
 
     def result(self):
-        return self.result()
+        return self._result
 
 
 class ImmediateExecutor:
