@@ -38,6 +38,7 @@ class FileCachedFunctionJob:
 
 
 class WorkerExecutor:
+
     def __init__(self, max_workers: int, use_thread_pool=False, pickle_to_file=False):
         self._max_workers = max_workers
         self._use_thread_pool = use_thread_pool
@@ -46,8 +47,12 @@ class WorkerExecutor:
         self._lock = Lock()
         self._pickle_to_file = False if use_thread_pool else pickle_to_file
 
-    def join(self, wait_callback: Optional[Callable]=None, timeout: Optional[float]=None, shutdown: bool=False):
+    def join(
+            self, wait_callback: Optional[Callable] = None, timeout: Optional[float] = None, shutdown: bool = False,
+            raise_timeout_exception: bool = False
+    ):
         with self._lock:
+            is_timeout = False
             need_wait_callback = wait_callback is not None
             infinity = float('inf')
             if timeout is None:
@@ -74,12 +79,16 @@ class WorkerExecutor:
                         try:
                             r.result(timeout=remaining_time)
                         except futures.TimeoutError:
+                            is_timeout = True
                             break
                 t1 = time.time()
 
             if shutdown:
                 if self._executor is not None:
                     self._executor.shutdown(wait=False)
+
+            if raise_timeout_exception and is_timeout:
+                return TimeoutError()
 
     def __call__(self,  *args, **kwargs):
         return self.submit(*args, **kwargs)
