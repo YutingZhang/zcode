@@ -88,7 +88,7 @@ class WorkerExecutor:
                     self._executor.shutdown(wait=False)
 
             if raise_timeout_exception and is_timeout:
-                return TimeoutError()
+                raise TimeoutError()
 
     def __call__(self,  *args, **kwargs):
         return self.submit(*args, **kwargs)
