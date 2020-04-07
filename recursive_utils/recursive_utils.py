@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from typing import Union, Tuple, Callable, Optional, Type, Dict
 from copy import deepcopy
+import re
 
 
 __all__ = [
@@ -433,16 +434,26 @@ class _GetSingleEntryReturnDefaultValue(BaseException):
         self.val = val
 
 
+def _get_item_advanced(d, item):
+    if isinstance(item, str) and item.startswith('@re:'):
+        pattern = re.compile(item[len('@re:'):])
+        all_keys = list(d)
+        matched_keys = [k for k in all_keys if isinstance(k, str) and pattern.match(k)]
+        assert len(matched_keys) == 1, 'did not find the key or the key is not unique'
+        item = matched_keys[0]
+    return d[item]
+
+
 def _get_single_entry_no_set_item(
         d, item, default_val=NoDefaultValue, default_val_func: Optional[Callable]=None,
         allow_callable_object=True
 ):
 
     if default_val_func is None and default_val is NoDefaultValue and not isinstance(item, Callable):
-        return d[item]
+        return _get_item_advanced(d, item)
 
     try:
-        return d[item]
+        return _get_item_advanced(d, item)
     except (KeyboardInterrupt, SystemExit):
         raise
     except Exception as exception:
