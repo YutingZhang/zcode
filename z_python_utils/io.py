@@ -250,7 +250,7 @@ class TemporaryToPermanentDirectory:
         )
 
     def get_removal_blocker(self) -> LockHolder:
-        assert self._entered >= 2, "get_removal_blocker can be called within context"
+        assert self._entered >= 2, "get_removal_blocker can be called only within context"
         if self._removal_blocker is None:
             self._removal_blocker = LockHolder(self._rm_lock)
         return self._removal_blocker
