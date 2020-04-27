@@ -268,3 +268,19 @@ class TagClass:
     def __str__(self):
         return self.__repr__()
 
+
+class ObjectWrapper:
+    def __init__(self, obj):
+        self._obj = obj
+        self._initialized = True
+
+    def __getattr__(self, item):
+        if hasattr(self._obj, item):
+            return getattr(self._obj, item)
+        raise AttributeError('No such attribute: %s' % item)
+
+    def __setattr__(self, key, value):
+        if '_initialized' not in dir(self) or not self._initialized:
+            super().__setattr__(key, value)
+            return
+        setattr(self._obj, key, value)
