@@ -105,7 +105,8 @@ class ResultCachingFunction:
 
         return out
 
-    def __getattribute__(self, item):
+    def __getattr__(self, item):
         if hasattr(self._func, item):
             return getattr(self._func, item)
+        raise AttributeError('No such attribute: %s' % item)
 
