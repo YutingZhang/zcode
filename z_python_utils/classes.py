@@ -18,6 +18,9 @@ __all__ = [
     'NonSelfAttrDoesNotExist',
     'get_nonself_attr_for_type',
     'TagClass',
+    'CallableObjectWrapper',
+    'ObjectWrapper',
+    'wrap_obj'
 ]
 
 
@@ -272,6 +275,16 @@ class TagClass:
 class ObjectWrapper:
     def __init__(self, obj):
         self._obj = obj
+        # my_members = dir(self)
+        # for member_name in dir(self._obj):
+        #     if member_name in my_members or not member_name.startswith('__'):
+        #         continue
+        #     the_member = object.__getattribute__(self._obj, member_name)
+        #     if not callable(the_member):
+        #         continue
+        #     if member_name == '__getattribute__':
+        #         continue
+        #     setattr(self, member_name, the_member)
         self._initialized = True
 
     def __getattr__(self, item):
@@ -279,8 +292,31 @@ class ObjectWrapper:
             return getattr(self._obj, item)
         raise AttributeError('No such attribute: %s' % item)
 
+    # def __getattribute__(self, item):
+    #     try:
+    #         return object.__getattribute__(self, item)
+    #     except AttributeError:
+    #         pass
+    #     obj = object.__getattribute__(self, '_obj')
+    #     if hasattr(obj, item):
+    #         return getattr(self._obj, item)
+    #     raise AttributeError('No such attribute: %s' % item)
+
     def __setattr__(self, key, value):
         if '_initialized' not in dir(self) or not self._initialized:
             super().__setattr__(key, value)
             return
         setattr(self._obj, key, value)
+
+
+class CallableObjectWrapper(ObjectWrapper):
+
+    def __call__(self, *args, **kwargs):
+        return self._obj(*args, **kwargs)
+
+
+def wrap_obj(obj):
+    if callable(obj):
+        return CallableObjectWrapper(obj)
+    else:
+        return ObjectWrapper(obj)
