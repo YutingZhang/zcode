@@ -287,6 +287,9 @@ class ObjectWrapper:
         #     setattr(self, member_name, the_member)
         self._initialized = True
 
+    def get_wrapped_object(self):
+        return self._obj
+
     def __getattr__(self, item):
         if hasattr(self._obj, item):
             return getattr(self._obj, item)
