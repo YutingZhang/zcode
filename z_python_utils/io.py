@@ -40,7 +40,14 @@ def relative_symlink(src, dst, overwrite=False):
     pdir_dst = os.path.dirname(dst)
     src_rel_dst = os.path.relpath(pdir_src, pdir_dst)
     src_rel = os.path.join(src_rel_dst, os.path.basename(src))
-    if overwrite and os.path.exists(dst):
+    link_exist = True
+    try:
+        os.readlink(dst)
+    except FileNotFoundError:
+        link_exist = False
+    except OSError:
+        pass
+    if overwrite and link_exist:
         try:
             os.remove(dst)
         except OSError:
