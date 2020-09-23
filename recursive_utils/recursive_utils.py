@@ -14,6 +14,7 @@ __all__ = [
     'enable_recursive',
     'recursive_generic_condition_func',
     'flatten_str_dict',
+    'recursive_unpack',
     'recursive_apply',
     'recursive_apply_removing_tag',
     'ToRemove',
@@ -231,11 +232,34 @@ def _recursive_apply(condition_func, func, *args, backup_func=None):
     return backup_func(*args)
 
 
-def recursive_apply(condition_func, func, *args, **kwargs):
+def recursive_apply(condition_func, func, *args, unpack_outputs: bool = False, **kwargs):
+
+    if unpack_outputs:
+        return _recursive_apply_with_outputs_unpacked(condition_func, func, *args, **kwargs)
+
     a = _recursive_apply(condition_func, func, *args, **kwargs)
     if a is ToRemove:
         a = type(args[0])()
+
+    if unpack_outputs:
+        a = recursive_unpack(condition_func, a)
     return a
+
+
+class _OutputTuple(tuple):
+    pass
+
+
+def _recursive_apply_with_outputs_unpacked(condition_func, func, *args, num_outputs: int = None, **kwargs):
+    a = recursive_apply(condition_func, lambda x: _OutputTuple(func(x)), *args, **kwargs)
+    b = recursive_unpack(lambda x: isinstance(x, _OutputTuple), a)
+    if num_outputs is not None:
+        if len(b) == 0:
+            return (a,) * num_outputs
+        else:
+            assert len(b) == num_outputs, \
+                "the specified number of outputs does not match with the actual number of outputs"
+    return b
 
 
 def recursive_flatten_to_list(condition_func, x):
@@ -263,6 +287,15 @@ def recursive_flatten_with_wrap_func(condition_func, x):
 
     return (recursive_flatten_to_list(condition_func, x),
             lambda val: recursive_wrap(condition_func, val, x))
+
+
+def recursive_unpack(condition_func, x):
+    assert condition_func is not None, "no default condition_func for recursive_unpack"
+    y, wrap_func = recursive_flatten_with_wrap_func(condition_func, x)
+    out = []
+    for y_i in zip(*y):
+        out.append(wrap_func(list(y_i)))
+    return tuple(out)
 
 
 class _RecursiveWrapIDT:    # index tracker
