@@ -81,6 +81,7 @@ class OptionStructCore:
         self.option_name = None
         if option_dict_or_struct is not None:
             self.add_user_dict(option_dict_or_struct)
+        self.called_function_names = set()
 
     @os_incore
     def add_user_dict(self, option_dict_or_struct):
@@ -252,6 +253,18 @@ class OptionStructCore:
     def require(self, option_name):
         self._require(option_name, is_include=False)
 
+    # @os_incore
+    def c_init_call(self, option_name):
+        self.called_function_names.clear()
+        self.c_include(option_name)
+
+    # @os_incore
+    def c_include(self, option_name):
+        if option_name in self.called_function_names:
+            return
+        self.option_def: OptionDef
+        self.option_def.run_to_get_optstruct(option_name, self)
+
     @os_incore
     def finalize(self, error_uneaten=True, display_name: str = None):
         uneaten_keys = set(self.user_dict.keys()) - set(self.enabled_dict.keys()) - self.unset_set
@@ -388,11 +401,16 @@ class OptionDef:
             p = OptionStruct(self._user_dict)
             p.option_def = self
             p.option_name = item + "_options"
-            # opt_def_func = getattr(self._def_obj, item)
-            # pt_def_func(p)
-            eval("self._def_obj.%s(p)" % item)
+
+            p.c_init_call(item)
+
             self._opts[item] = p
             return p
+
+    def run_to_get_optstruct(self, item, p: OptionStructCore):
+        # opt_def_func = getattr(self._def_obj, item)
+        # pt_def_func(p)
+        eval("self._def_obj.%s(p)" % item)
 
     @staticmethod
     def assert_option_struct(p):
