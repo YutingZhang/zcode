@@ -81,7 +81,7 @@ def update_class_def_per_ref(target_class, ref_class, target_base_class=None, re
 
 
 def link_with_instance(self, another):
-    # this is for merges the defintion of another instance
+    # this is for merges the definition of another instance
 
     my_attr_dict = list(filter(
         lambda kk: not (kk.startswith('__') and kk.endswith('__')),
