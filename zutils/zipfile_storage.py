@@ -38,8 +38,13 @@ class ZipFileStorage:
         with self._cache_access_lock:
             self._cache[key] = value, r
 
-    def open(self, name, mode='r', *args, **kwargs):
-        return self._zf.open(name + ".pkl", mode, *args, **kwargs)
+    def batch_set(self, keys, values):
+        for k, v in zip(keys, values):
+            self[k] = v
+
+    def open(self, key, mode='r', *args, **kwargs):
+        key = str(key)
+        return self._zf.open(key + ".pkl", mode, *args, **kwargs)
 
     def keys(self):
         for k in self._zf.namelist():
