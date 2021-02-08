@@ -96,11 +96,6 @@ class ZipFileStorage:
 
             key = str(key)
 
-            with self._cache_access_lock:
-                if key in self._cache:
-                    prefetched[j] = _DummyFutureObject(self._cache[key][0])
-                    continue
-
             ext = self._key2ext[key]
             prefetched[j] = deserialize_from_zip(
                 key, ext, self._zf, self._cache, self._cache_access_lock, self._zipfile_executor
