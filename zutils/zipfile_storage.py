@@ -134,7 +134,7 @@ def serialize_and_add_to_zip_queue(
     zipfile_executor.submit(add_to_zip, key, ext, s, zf, cache, cache_access_lock)
 
 
-def add_to_zip(key, s, ext: str, zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock):
+def add_to_zip(key, ext: str, s, zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock):
     zf.writestr(key + ext, s)
     with cache_access_lock:
         cache.pop(key)
