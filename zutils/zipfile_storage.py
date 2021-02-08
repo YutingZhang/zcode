@@ -9,14 +9,6 @@ import pickle
 from typing import Iterable, Optional
 
 
-class _DummyFutureObject:
-    def __init__(self, a):
-        self.a = a
-
-    def result(self):
-        return a
-
-
 class ZipFileStorage:
     def __init__(self, file: str, mode='r', *args, num_workers: int = 4, **kwargs):
         """
