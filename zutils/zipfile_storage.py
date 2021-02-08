@@ -64,10 +64,11 @@ class ZipFileStorage:
         return self._key2ext.keys()
 
     def values(self):
-        return self.iterate(self.keys())
+        for _, value in self.iterate_items(self.keys()):
+            yield value
 
     def items(self):
-        return zip(self.keys(), self.values())
+        return self.iterate_items(self.keys())
 
     def __iter__(self):
         return self.keys()
@@ -75,13 +76,13 @@ class ZipFileStorage:
     def __len__(self):
         return len(self._zf.infolist())
 
-    def iterate(self, keys: Iterable):
+    def iterate_items(self, keys: Iterable):
         prefetched = dict()
 
-        def _get_value(_j):
-            _r = prefetched.pop(_j)
+        def _get_prefetched_item(_j):
+            _key, _r = prefetched.pop(_j)
             _value = _r.result()
-            yield _value
+            yield _key,_value
 
         n = j = 0
         for key in keys:
@@ -89,17 +90,17 @@ class ZipFileStorage:
             key = str(key)
 
             ext = self._key2ext[key]
-            prefetched[j] = deserialize_from_zip(
+            prefetched[j] = key, deserialize_from_zip(
                 key, ext, self._zf, self._cache, self._cache_access_lock, self._zipfile_executor
             )
 
             n = n + 1
             if n > self._prefetch_size:
-                yield _get_value(j)
+                yield _get_prefetched_item(j)
                 j += 1
 
         for j in range(j, n):
-            yield _get_value(j)
+            yield _get_prefetched_item(j)
 
     def infolist(self):
         return self._zf.infolist()
