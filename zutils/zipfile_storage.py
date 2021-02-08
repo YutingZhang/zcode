@@ -6,6 +6,15 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 import pickle
+from typing import Iterable, Optional
+
+
+class _DummyFutureObject:
+    def __init__(self, a):
+        self.a = a
+
+    def result(self):
+        return a
 
 
 class ZipFileStorage:
@@ -21,6 +30,7 @@ class ZipFileStorage:
         self._cache_access_lock = Lock()
         self._key2ext = dict()
         self._init_key2ext_mapping()
+        self._prefetch_size = num_workers * 2
 
     def _init_key2ext_mapping(self):
         for fn in self._zf.namelist():
@@ -36,17 +46,8 @@ class ZipFileStorage:
 
     def __getitem__(self, key):
         key = str(key)
-        with self._cache_access_lock:
-            if key in self._cache:
-                return self._cache[key][0]
         ext = self._key2ext[key]
-        s = self._zf.read(key + ext)
-        if ext == ".int.txt":
-            value = int(s.decode(encoding='UTF-8'))
-        elif ext == ".str.txt":
-            value = s.decode(encoding='UTF-8')
-        else:
-            value = pickle.loads(s)
+        value = deserialize_from_zip(key, ext, self._zf, self._cache, self._cache_access_lock)
         return value
 
     def __setitem__(self, key, value):
@@ -71,18 +72,47 @@ class ZipFileStorage:
         return self._key2ext.keys()
 
     def values(self):
-        for k in self.keys():
-            yield self[k]
+        return self.iterate(self.keys())
 
     def items(self):
-        for k in self.keys():
-            yield k, self[k]
+        return zip(self.keys(), self.values())
 
     def __iter__(self):
         return self.keys()
 
     def __len__(self):
         return len(self._zf.infolist())
+
+    def iterate(self, keys: Iterable):
+        prefetched = dict()
+
+        def _get_value(_j):
+            _r = prefetched.pop(_j)
+            _value = _r.result()
+            yield _value
+
+        n = j = 0
+        for key in keys:
+
+            key = str(key)
+
+            with self._cache_access_lock:
+                if key in self._cache:
+                    prefetched[j] = _DummyFutureObject(self._cache[key][0])
+                    continue
+
+            ext = self._key2ext[key]
+            prefetched[j] = deserialize_from_zip(
+                key, ext, self._zf, self._cache, self._cache_access_lock, self._zipfile_executor
+            )
+
+            n = n + 1
+            if n > self._prefetch_size:
+                yield _get_value(j)
+                j += 1
+
+        for j in range(j, n):
+            yield _get_value(j)
 
     def infolist(self):
         return self._zf.infolist()
@@ -120,3 +150,26 @@ def add_to_zip(key, s, ext: str, zf: zipfile.ZipFile, cache: dict, cache_access_
     zf.writestr(key + ext, s)
     with cache_access_lock:
         cache.pop(key)
+
+
+def deserialize_from_zip(
+        key: str, ext: str, zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock,
+        zipfile_executor: Optional[ThreadPoolExecutor] = None
+):
+    with cache_access_lock:
+        if key in cache:
+            return cache[key][0]
+
+    if zipfile_executor is None:
+        s = zf.read(key + ext)
+    else:
+        # make sure to do unzip in a single thread
+        r = zipfile_executor.submit(zf.read, key + ext)
+        s = r.result()
+    if ext == ".int.txt":
+        value = int(s.decode(encoding='UTF-8'))
+    elif ext == ".str.txt":
+        value = s.decode(encoding='UTF-8')
+    else:
+        value = pickle.loads(s)
+    return value
