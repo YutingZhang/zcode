@@ -82,7 +82,7 @@ class ZipFileStorage:
         def _get_prefetched_item(_j):
             _key, _r = prefetched.pop(_j)
             _value = _r.result()
-            yield _key,_value
+            yield _key, _value
 
         n = j = 0
         for key in keys:
