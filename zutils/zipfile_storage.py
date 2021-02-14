@@ -126,6 +126,7 @@ class ZipFileStorage:
     def __del__(self):
         self.close()
 
+
 def serialize_and_add_to_zip_queue(
         key, value, zipfile_executor: ThreadPoolExecutor,
         zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock
