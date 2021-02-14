@@ -120,6 +120,8 @@ class ZipFileStorage:
         self._zipfile_executor.shutdown(wait=True)
         self._zf.close()
         self._is_closed = True
+        self._pickle_executor = None
+        self._zipfile_executor = None
 
     def __del__(self):
         self.close()
