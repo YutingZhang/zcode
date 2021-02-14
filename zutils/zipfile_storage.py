@@ -23,6 +23,7 @@ class ZipFileStorage:
         self._key2ext = dict()
         self._init_key2ext_mapping()
         self._prefetch_size = num_workers * 2
+        self._is_closed = False
 
     def _init_key2ext_mapping(self):
         for fn in self._zf.namelist():
@@ -111,12 +112,17 @@ class ZipFileStorage:
         for r in all_results:
             r.result()
 
-    def __del__(self):
+    def close(self):
+        if self._is_closed:
+            return
         self.join()
         self._pickle_executor.shutdown(wait=True)
         self._zipfile_executor.shutdown(wait=True)
         self._zf.close()
+        self._is_closed = True
 
+    def __del__(self):
+        self.close()
 
 def serialize_and_add_to_zip_queue(
         key, value, zipfile_executor: ThreadPoolExecutor,
