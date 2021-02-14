@@ -54,6 +54,19 @@ def git_version_dict(dir_path=None, record_traceback=None):
     # git checksum of HEAD
     proc = call_until_success(
         OSError, subprocess.Popen,
+        "%sgit rev-parse --show-toplevel" % prefixed_command,
+        shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        executable="bash",
+    )
+    repo_root = proc.stdout.read().decode("utf-8")
+    proc.communicate()
+    proc.wait()
+    repo_root: str
+    gv_dict["REPO_ROOT"] = repo_root.rstrip("\n\r")
+
+    # git checksum of HEAD
+    proc = call_until_success(
+        OSError, subprocess.Popen,
         "%sgit rev-parse HEAD" % prefixed_command, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.PIPE,
         executable="bash",
     )
