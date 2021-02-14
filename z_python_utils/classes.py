@@ -323,3 +323,47 @@ def wrap_obj(obj):
         return CallableObjectWrapper(obj)
     else:
         return ObjectWrapper(obj)
+
+
+class DummyEverything:
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __getattr__(self, item):
+        return DummyEverything()
+
+    def __setattr__(self, key, value):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        pass
+
+    def __getitem__(self, item):
+        return DummyEverything()
+
+    def __setitem__(self, key, value):
+        pass
+
+    def keys(self):
+        yield from iter(self)
+
+    def values(self):
+        for k in iter(self):
+            yield self[k]
+
+    def items(self):
+        yield from zip(self.keys(), self.values())
+
+    def __enter__(self):
+        return DummyEverything()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+    def __len__(self):
+        return 1
+
+    def __iter__(self):
+        yield DummyEverything()
+
