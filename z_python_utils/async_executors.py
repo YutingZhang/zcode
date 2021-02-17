@@ -378,7 +378,7 @@ class HeartBeat:
         thread_dict = dict(
             running_lock=running_lock, alive_lock=alive_lock
         )
-        thread = Thread(target=_heart_beat, kwargs=dict(thread_dict))
+        thread = Thread(target=_heart_beat, args=(self._interval, self._callback), kwargs=dict(thread_dict))
         thread_dict["thread"] = thread
         with type(self)._all_threads_lock:
             if id(self) in type(self)._all_threads:
