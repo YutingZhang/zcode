@@ -351,6 +351,67 @@ def async_detechable_thread_call(*args, **kwargs):
     _ = DetachableExecutorWrapper(thread, join_func_name='join')
 
 
+def _heart_beat(interval: float, callback: Callable, running_lock: Lock, alive_lock: Lock):
+    while not alive_lock.acquire(timeout=interval):
+        with running_lock:
+            if alive_lock.acquire(timeout=0):
+                # if acquired, it is dead
+                return
+            callback()
+
+
+class HeartBeat:
+
+    _all_threads = dict()
+    _all_threads_lock = Lock()
+
+    def __init__(self, interval: float, callback: Callable):
+        self._interval = interval   # in sec
+        self._callback = callback
+
+    def start(self):
+        with type(self)._all_threads_lock:
+            if id(self) in type(self)._all_threads:
+                return
+        running_lock = Lock()
+        alive_lock = Lock()
+        thread_dict = dict(
+            running_lock=running_lock, alive_lock=alive_lock
+        )
+        thread = Thread(target=_heart_beat, kwargs=dict(thread_dict))
+        thread_dict["thread"] = thread
+        with type(self)._all_threads_lock:
+            if id(self) in type(self)._all_threads:
+                return
+            type(self)._all_threads[id(self)] = thread_dict
+        alive_lock.acquire()
+        thread.start()
+
+    def stop(self):
+        with type(self)._all_threads_lock:
+            if id(self) not in type(self)._all_threads:
+                return
+            thread_dict = type(self)._all_threads.pop(id(self))
+        running_lock = thread_dict["running_lock"]
+        alive_lock = thread_dict["alive_lock"]
+        thread = thread_dict["thread"]
+        del thread_dict
+        alive_lock: Lock
+        thread: Thread
+        with running_lock:
+            alive_lock.release()
+        thread.join()
+
+    def __enter__(self):
+        self.start()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
+
+    def __del__(self):
+        self.stop()
+
+
 def main():
     import time
     executor = WorkerExecutor(max_workers=1)
