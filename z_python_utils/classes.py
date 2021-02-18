@@ -1,6 +1,6 @@
 import inspect
 from inspect import isfunction, ismethod
-from typing import List
+from typing import List, Iterable
 import random
 
 
@@ -20,7 +20,8 @@ __all__ = [
     'TagClass',
     'CallableObjectWrapper',
     'ObjectWrapper',
-    'wrap_obj'
+    'wrap_obj',
+    'SizedWrapperOfIterable',
 ]
 
 
@@ -367,3 +368,14 @@ class DummyEverything:
     def __iter__(self):
         yield DummyEverything()
 
+
+class SizedWrapperOfIterable:
+    def __init__(self, obj: Iterable, n: int):
+        self._obj = obj
+        self._n = n
+
+    def __len__(self):
+        return self._n
+
+    def __iter__(self):
+        return iter(self._obj)

@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 import pickle
 from typing import Iterable, Optional
+from z_python_utils.classes import SizedWrapperOfIterable
 
 
 class ZipFileStorage:
@@ -65,6 +66,9 @@ class ZipFileStorage:
         return self._key2ext.keys()
 
     def values(self):
+        return SizedWrapperOfIterable(self._values(), len(self))
+
+    def _values(self):
         for _, value in self.iterate_items(self.keys()):
             yield value
 
@@ -78,12 +82,16 @@ class ZipFileStorage:
         return len(self._zf.infolist())
 
     def iterate_items(self, keys: Iterable):
+        item_iterable = self._iterate_items(keys)
+        return SizedWrapperOfIterable(item_iterable, len(self))
+
+    def _iterate_items(self, keys: Iterable):
         prefetched = dict()
 
         def _get_prefetched_item(_j):
             _key, _r = prefetched.pop(_j)
             _value = _r.result()
-            yield _key, _value
+            return _key, _value
 
         n = j = 0
         for key in keys:
@@ -91,7 +99,7 @@ class ZipFileStorage:
             key = str(key)
 
             ext = self._key2ext[key]
-            prefetched[j] = key, self._pickle_executor.submit(
+            prefetched[n] = key, self._pickle_executor.submit(
                 deserialize_from_zip,
                 key, ext, self._zf, self._cache, self._cache_access_lock, self._zipfile_executor
             )
@@ -101,8 +109,8 @@ class ZipFileStorage:
                 yield _get_prefetched_item(j)
                 j += 1
 
-        for j in range(j, n):
-            yield _get_prefetched_item(j)
+        for i in range(j, n):
+            yield _get_prefetched_item(i)
 
     def infolist(self):
         return self._zf.infolist()
