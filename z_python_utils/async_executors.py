@@ -352,12 +352,14 @@ def async_detechable_thread_call(*args, **kwargs):
 
 
 def _heart_beat(interval: float, callback: Callable, running_lock: Lock, alive_lock: Lock):
+    is_first_iter = True
     while True:
         with running_lock:
-            if alive_lock.acquire(timeout=0):
+            if not is_first_iter and alive_lock.acquire(timeout=0):
                 # if acquired, it is dead
                 return
             callback()
+            is_first_iter = False
         if alive_lock.acquire(timeout=interval):
             # if acquired, it is dead
             return
