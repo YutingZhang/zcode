@@ -91,7 +91,8 @@ class ZipFileStorage:
             key = str(key)
 
             ext = self._key2ext[key]
-            prefetched[j] = key, deserialize_from_zip(
+            prefetched[j] = key, self._pickle_executor.submit(
+                deserialize_from_zip,
                 key, ext, self._zf, self._cache, self._cache_access_lock, self._zipfile_executor
             )
 
