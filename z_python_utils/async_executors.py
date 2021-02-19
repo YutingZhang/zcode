@@ -370,9 +370,10 @@ class HeartBeat:
     _all_threads = dict()
     _all_threads_lock = Lock()
 
-    def __init__(self, interval: float, callback: Callable):
+    def __init__(self, interval: float, callback: Callable, final_callback: Optional[Callable] = None):
         self._interval = interval   # in sec
         self._callback = callback
+        self._final_callback = final_callback
 
     def start(self):
         with type(self)._all_threads_lock:
@@ -406,6 +407,8 @@ class HeartBeat:
         with running_lock:
             alive_lock.release()
         thread.join()
+        if self._final_callback is not None:
+            self._final_callback()
 
     def __enter__(self):
         self.start()
