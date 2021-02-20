@@ -395,6 +395,6 @@ def different_subfolders_from_list(a: List[str]) -> (List[str], str):
 @contextmanager
 def open_with_lock(filename, mode='r'):
     with open(filename, mode) as fd:
-        fcntl.flock(fd, fcntl.LOCK_EX)
+        fcntl.flock(fd, fcntl.LOCK_SH if mode.startswith('r') else fcntl.LOCK_EX)
         yield fd
         fcntl.flock(fd, fcntl.LOCK_UN)
