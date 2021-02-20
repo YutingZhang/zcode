@@ -83,3 +83,13 @@ def zcode_dir():
 
 
 pyu_dir = z_python_utils_dir
+
+
+def order_preserving_unique(a):
+    visited = set()
+    b = []
+    for x in a:
+        if x not in visited:
+            b.append(x)
+            visited.add(x)
+    return b
