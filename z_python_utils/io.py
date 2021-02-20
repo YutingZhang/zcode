@@ -11,6 +11,9 @@ from .async_executors import WorkerExecutor, DetachableExecutorWrapper
 from .functions import call_until_success
 from .time import timestamp_for_filename
 from .classes import dummy_class_for_with
+import fcntl
+from contextlib import contextmanager
+
 
 
 def path_full_split(p):
@@ -387,3 +390,11 @@ def different_subfolders_from_list(a: List[str]) -> (List[str], str):
     n = len(common_root) + 1
     subfolders = [x[n:] for x in a]
     return subfolders, common_root
+
+
+@contextmanager
+def open_with_lock(filename, mode='r'):
+    with open(filename, mode) as fd:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield fd
+        fcntl.flock(fd, fcntl.LOCK_UN)
