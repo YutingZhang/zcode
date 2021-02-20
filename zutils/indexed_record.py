@@ -92,7 +92,8 @@ class IndexedRecord:
                 self._data_file = open(self.data_file_path, 'rb')
             self._is_data_file_pos_end = False
 
-            key2meta = loads_single_object(open(self.index_file_path, 'rb').read())
+            with open(self.index_file_path, 'rb') as f:
+                key2meta = loads_single_object(f.read())
             assert isinstance(key2meta, list), "corrupted dataset, index is not a list of tuples"
             key2meta = OrderedDict(key2meta)
             self._key2meta = key2meta
