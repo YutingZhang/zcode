@@ -3,6 +3,7 @@ import sys
 from .misc import order_preserving_unique
 from .io import call_until_success
 import subprocess
+import site
 
 
 def self_memory_usage():
@@ -33,7 +34,7 @@ def system_env_dict() -> dict:
     python_path = order_preserving_unique(sys.path)
     python_path = list(filter(lambda x: "/.pycharm_helpers/" not in x, python_path))
 
-    # python interpretable path
+    # filter out python standard paths
     cmd4base_python_path = 'PYTHONPATH="" python3 -c "import sys ; [print(a) for a in sys.path];"'
     proc = call_until_success(
         OSError, subprocess.Popen,
@@ -45,9 +46,21 @@ def system_env_dict() -> dict:
     proc.communicate()
     proc.wait()
 
-    base_python_path = base_python_path.split(":")
+    base_python_path = list(filter(bool, base_python_path.split("\n")))
     preserved_python_path = set(python_path) - set(base_python_path)
     python_path = filter(lambda x: x in preserved_python_path, python_path)
+
+    # filter out more python standard paths
+    python_path = filter(lambda x: "/.pycharm_helpers/" not in x, python_path)
+    for site_package_path in site.getsitepackages():
+        if not site_package_path:
+            continue
+        if site_package_path[-1] != '/':
+            site_package_path += '/'
+        python_path = filter(
+            lambda x: not x.startswith(site_package_path) and x != site_package_path[:-1], python_path
+        )
+
     env_dict['PYTHONPATH'] = ":".join(python_path)
 
     env_dict['PYTHON'] = os.path.abspath(sys.executable)
