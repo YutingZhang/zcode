@@ -32,6 +32,8 @@ def system_env_dict() -> dict:
 
     # python paths
     python_path = order_preserving_unique(sys.path)
+    python_path = [os.path.abspath(x) for x in python_path]
+    python_path = order_preserving_unique(python_path)
     python_path = list(filter(lambda x: "/.pycharm_helpers/" not in x, python_path))
 
     # filter out python standard paths
@@ -46,7 +48,7 @@ def system_env_dict() -> dict:
     proc.communicate()
     proc.wait()
 
-    base_python_path = list(filter(bool, base_python_path.split("\n")))
+    base_python_path = [os.path.abspath(x) for x in filter(bool, base_python_path.split("\n"))]
     preserved_python_path = set(python_path) - set(base_python_path)
     python_path = filter(lambda x: x in preserved_python_path, python_path)
 
@@ -55,6 +57,7 @@ def system_env_dict() -> dict:
     for site_package_path in site.getsitepackages():
         if not site_package_path:
             continue
+        site_package_path = os.path.abspath(site_package_path)
         if site_package_path[-1] != '/':
             site_package_path += '/'
         python_path = filter(
