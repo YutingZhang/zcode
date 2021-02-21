@@ -387,7 +387,14 @@ def get_class_fullname(a, use_filename_for_main: bool = False):
         a = type(a)
     mod = inspect.getmodule(a)
     module_name = mod.__name__
-    if use_filename_for_main and module_name == "__main__":
-        module_name = os.path.abspath(mod.__file__) + "#"
+    if use_filename_for_main:
+        need_to_use_filename = False
+        if module_name == "__main__":
+            need_to_use_filename = True
+        elif hasattr(a, "____LOADED_AS_ORPHAN____") and getattr(a, "____LOADED_AS_ORPHAN____"):
+            # backdoor to force using filename
+            need_to_use_filename = True
+        if need_to_use_filename:
+            module_name = os.path.abspath(mod.__file__) + "#"
     class_name = a.__name__
     return module_name + "." + class_name
