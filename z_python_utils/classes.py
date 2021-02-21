@@ -2,6 +2,7 @@ import inspect
 from inspect import isfunction, ismethod
 from typing import List, Iterable
 import random
+import os
 
 
 __all__ = [
@@ -379,3 +380,14 @@ class SizedWrapperOfIterable:
 
     def __iter__(self):
         return iter(self._obj)
+
+
+def get_class_fullname(a, use_filename_for_main: bool = False):
+    if not inspect.isclass(a):
+        a = type(a)
+    mod = inspect.getmodule(a)
+    module_name = mod.__name__
+    if use_filename_for_main and module_name == "__main__":
+        module_name = os.path.abspath(mod.__file__) + "#"
+    class_name = a.__name__
+    return module_name + "." + class_name
