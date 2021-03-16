@@ -79,8 +79,10 @@ def run_and_get_stdout(cmd: str) -> (str, str):
         shell=True
     )
     out, err = proc.communicate()
-    proc.wait()
-    return out, err
+    rc = proc.wait()
+    out = out.decode()
+    err = err.decode()
+    return out, err, rc
 
 
 def run_system(cmd: str) -> (str, str):
