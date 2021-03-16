@@ -71,7 +71,7 @@ def system_env_dict() -> dict:
     return env_dict
 
 
-def run_and_get_stdout(cmd: str) -> (str, str):
+def run_and_get_stdout(cmd: str) -> (str, str, int):
     proc = call_until_success(
         OSError, subprocess.Popen, cmd,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
