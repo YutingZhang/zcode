@@ -55,6 +55,10 @@ class SerializedConnection:
                     time.sleep(retry_interval_until_success)
 
     @property
+    def raw_root(self):
+        return self._conn.root
+
+    @property
     def root(self):
         return _SerializedConnectionRoot(self._conn)
 
