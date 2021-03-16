@@ -7,8 +7,9 @@ __all__ = [
 
 import rpyc
 import pyarrow
-from typing import Callable, Union
+from typing import Callable
 from functools import partial
+import time
 
 
 Service = rpyc.Service
@@ -42,8 +43,16 @@ def serialized_call(*args, **kwargs):
 
 
 class SerializedConnection:
-    def __init__(self, hostname: str, port: int):
-        self._conn = rpyc.connect(hostname, port)
+    def __init__(self, hostname: str, port: int, retry_interval_until_success: float = -1):
+        if retry_interval_until_success <= 0:
+            self._conn = rpyc.connect(hostname, port)
+        else:
+            while True:
+                try:
+                    self._conn = rpyc.connect(hostname, port)
+                    break
+                except ConnectionError:
+                    time.sleep(retry_interval_until_success)
 
     @property
     def root(self):
