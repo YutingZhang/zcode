@@ -69,3 +69,21 @@ def system_env_dict() -> dict:
     env_dict['PYTHON'] = os.path.abspath(sys.executable)
 
     return env_dict
+
+
+def run_and_get_stdout(cmd: str) -> (str, str):
+    proc = call_until_success(
+        OSError, subprocess.Popen, cmd,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
+        executable="bash",
+        shell=True
+    )
+    out, err = proc.communicate()
+    proc.wait()
+    return out, err
+
+
+def run_system(cmd: str) -> (str, str):
+    return call_until_success(
+        OSError, os.system, cmd
+    )
