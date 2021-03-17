@@ -43,13 +43,16 @@ def serialized_call(*args, **kwargs):
 
 
 class SerializedConnection:
-    def __init__(self, hostname: str, port: int, retry_interval_until_success: float = -1):
+    def __init__(self, hostname: str, port: int, retry_interval_until_success: float = -1, timeout=60):
+        config = dict(
+            sync_request_timeout=timeout
+        )
         if retry_interval_until_success <= 0:
-            self._conn = rpyc.connect(hostname, port)
+            self._conn = rpyc.connect(hostname, port, config=config)
         else:
             while True:
                 try:
-                    self._conn = rpyc.connect(hostname, port)
+                    self._conn = rpyc.connect(hostname, port, config=config)
                     break
                 except ConnectionError:
                     time.sleep(retry_interval_until_success)
