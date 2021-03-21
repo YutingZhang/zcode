@@ -4,6 +4,7 @@ from .misc import order_preserving_unique
 from .io import call_until_success
 import subprocess
 import site
+from typing import Callable
 
 
 def self_memory_usage():
@@ -89,3 +90,50 @@ def run_system(cmd: str) -> (str, str):
     return call_until_success(
         OSError, os.system, cmd
     )
+
+
+def _screen_session_name_with_index(session_name: str, index: int = None):
+    if index is None:
+        return session_name
+    return session_name + "-" + str(index)
+
+
+def screen_session_exists(session_name: str, index: int = None):
+    session_name = _screen_session_name_with_index(session_name, index)
+
+    out, _, _ = run_and_get_stdout(f"screen -ls | grep '[0-9]*\\.{session_name}\t'")
+    out = out.strip()
+    return bool(out)
+
+
+def screen_create_session(session_name: str, cmd: str, index: int = None, verbose: bool = True):
+    session_name = _screen_session_name_with_index(session_name, index)
+    if index is not None:
+        cmd = f'export WORKER_SESSION_ID={index}; ' + cmd
+    full_cmd = f"screen -S {session_name} -d -m bash -c '{cmd}'"
+    if verbose:
+        print("   Create Screen Session: %s" % session_name)
+        print("     +", full_cmd, flush=True)
+
+    run_system(full_cmd)
+
+
+def screen_quit_session(session_name: str, index: int = None):
+    session_name = _screen_session_name_with_index(session_name, index)
+    full_cmd = f"screen -S {session_name} -X quit"
+    run_system(full_cmd)
+
+
+def screen_create_session_group(
+        session_name: str, num_sessions: int, cmd_gen: Callable[[int], str], verbose: bool = True
+):
+    if verbose:
+        print("Create Screen Session Group: %s" % session_name, flush=True)
+    for i in range(num_sessions):
+        print(f" - Session {i} / {num_sessions}", flush=True)
+        if screen_session_exists(session_name, index=i):
+            print("   Existed")
+            continue
+        cmd = cmd_gen(i)
+        screen_create_session(session_name, cmd, index=i, verbose=verbose)
+
