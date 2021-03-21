@@ -72,14 +72,17 @@ def system_env_dict() -> dict:
     return env_dict
 
 
-def run_and_get_stdout(cmd: str) -> (str, str, int):
+def run_and_get_stdout(cmd: str, input_str: Optional[str] = None) -> (str, str, int):
     proc = call_until_success(
         OSError, subprocess.Popen, cmd,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE if input_str else subprocess.DEVNULL,
         executable="bash",
         shell=True
     )
-    out, err = proc.communicate()
+    if input_str:
+        out, err = proc.communicate(input=input_str)
+    else:
+        out, err = proc.communicate()
     rc = proc.wait()
     out = out.decode()
     err = err.decode()
@@ -160,6 +163,46 @@ def jobc_watch_create_session_group(
             env_vars = env_var_gen(session_id)
             for k, v in env_vars.items():
                 _cmd.append(f"export {k}='{v}'")
-        _cmd.append(f"jobc-watch '{jobc_var_dir}' '{session_name + '-' + str(session_id)}'")
+        if session_id >= 0:
+            _session_name = session_name + '-' + str(session_id)
+        else:
+            _session_name = session_name
+        _cmd.append(f"jobc-watch '{jobc_var_dir}' '{_session_name}'")
         return "; ".join(_cmd)
-    return screen_create_session_group(session_name, num_sessions=num_sessions, cmd_gen=_cmd_gen, verbose=verbose)
+    if num_sessions > 0:
+        return screen_create_session_group(
+            session_name, num_sessions=num_sessions, cmd_gen=_cmd_gen, verbose=verbose
+        )
+    else:
+        return screen_create_session(session_name, cmd=_cmd_gen(-1))
+
+
+def jobc_watch_create_session(
+        session_name: str, jobc_var_dir: str,
+        working_dir: Optional[str] = None,
+        env_vars: Dict[str, str] = None,
+        verbose: bool = True
+):
+    return jobc_watch_create_session_group(
+        session_name, num_sessions=0, jobc_var_dir=jobc_var_dir, working_dir=working_dir,
+        env_var_gen=lambda i: env_vars, verbose=verbose
+    )
+
+
+def _get_jobc_add_cmd(jobc_var_dir: str, name: Optional[str] = None):
+    if name:
+        return f"jobc '{jobc_var_dir}' '{name}'"
+    else:
+        return f"jobc '{jobc_var_dir}'"
+
+
+def jobc_add_from_script(jobc_var_dir: str, script: str, name: Optional[str] = None):
+    cmd = _get_jobc_add_cmd(jobc_var_dir, name)
+    _, _, ec = run_and_get_stdout(cmd, input_str=script)
+    return not bool(ec)
+
+
+def jobc_add_from_file(jobc_var_dir: str, fn: str, name: Optional[str] = None):
+    cmd = f"cat 'fn' | " + _get_jobc_add_cmd(jobc_var_dir, name)
+    _, _, ec = run_and_get_stdout(cmd)
+    return not bool(ec)
