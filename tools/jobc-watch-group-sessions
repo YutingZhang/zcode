@@ -15,7 +15,7 @@ def main():
     parser.add_argument(dest="session_name", type=str, help="session name for jobc-watch and screen")
     parser.add_argument(dest="num_sessions", type=int, help="var dir for jobc")
     parser.add_argument(
-        "--var-dir", "--var", "-V", dest="var_dir", type=str, required=True, help="var dir for jobc"
+        dest="var_dir", type=str, help="var dir for jobc"
     )
     parser.add_argument(
         "--working-dir", "-W", dest="working_dir", type=str, default=None, help="working dir for jobc-watch"
