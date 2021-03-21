@@ -197,13 +197,18 @@ def _get_jobc_add_cmd(jobc_var_dir: str, name: Optional[str] = None):
         return f"jobc-add '{jobc_var_dir}'"
 
 
-def jobc_add_from_script(jobc_var_dir: str, script: str, name: Optional[str] = None):
+def jobc_add_from_script(jobc_var_dir: str, script: str, name: Optional[str] = None, verbose: bool = True):
     cmd = _get_jobc_add_cmd(jobc_var_dir, name)
+    if verbose:
+        print(" +", cmd, flush=True)
+        print("   +", script)
     _, _, ec = run_and_get_stdout(cmd, input_str=script)
     return not bool(ec)
 
 
-def jobc_add_from_file(jobc_var_dir: str, filename: str, name: Optional[str] = None):
+def jobc_add_from_file(jobc_var_dir: str, filename: str, name: Optional[str] = None, verbose: bool = True):
     cmd = f"cat '{filename}' | " + _get_jobc_add_cmd(jobc_var_dir, name)
+    if verbose:
+        print(" +", cmd, flush=True)
     _, _, ec = run_and_get_stdout(cmd)
     return not bool(ec)
