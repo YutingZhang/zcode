@@ -192,9 +192,9 @@ def jobc_watch_create_session(
 
 def _get_jobc_add_cmd(jobc_var_dir: str, name: Optional[str] = None):
     if name:
-        return f"jobc '{jobc_var_dir}' '{name}'"
+        return f"jobc-add '{jobc_var_dir}' '{name}'"
     else:
-        return f"jobc '{jobc_var_dir}'"
+        return f"jobc-add '{jobc_var_dir}'"
 
 
 def jobc_add_from_script(jobc_var_dir: str, script: str, name: Optional[str] = None):
