@@ -161,8 +161,9 @@ def jobc_watch_create_session_group(
             _cmd.append(f"cd '{working_dir}'")
         if env_var_gen is not None:
             env_vars = env_var_gen(session_id)
-            for k, v in env_vars.items():
-                _cmd.append(f"export {k}='{v}'")
+            if env_vars:
+                for k, v in env_vars.items():
+                    _cmd.append(f"export {k}='{v}'")
         if session_id >= 0:
             _session_name = session_name + '-' + str(session_id)
         else:

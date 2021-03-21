@@ -47,3 +47,6 @@ def main():
         working_dir=args.working_dir, env_var_gen=_env_var_gen
     )
 
+
+if __name__ == "__main__":
+    main()
