@@ -138,7 +138,7 @@ def screen_create_session_group(
         screen_create_session(session_name, cmd, index=i, verbose=verbose)
 
 
-def get_num_gpus():
+def get_num_cuda_gpus():
     num_gpus, _, _ = run_and_get_stdout("nvidia-smi -L | wc -l")
     num_gpus = num_gpus.strip()
     num_gpus = int(num_gpus)
