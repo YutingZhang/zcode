@@ -4,7 +4,7 @@ from .misc import order_preserving_unique
 from .io import call_until_success
 import subprocess
 import site
-from typing import Callable
+from typing import Callable, Dict, Optional
 
 
 def self_memory_usage():
@@ -143,3 +143,23 @@ def get_num_cuda_gpus():
     num_gpus = num_gpus.strip()
     num_gpus = int(num_gpus)
     return num_gpus
+
+
+def jobc_watch_create_session_group(
+        session_name: str, num_sessions: int,
+        jobc_var_dir: str,
+        working_dir: Optional[str] = None,
+        env_var_gen: Optional[Callable[[int], Dict[str, str]]] = None,
+        verbose: bool = True
+):
+    def _cmd_gen(session_id: int):
+        _cmd = []
+        if working_dir:
+            _cmd.append(f"cd '{working_dir}'")
+        if env_var_gen is not None:
+            env_vars = env_var_gen(session_id)
+            for k, v in env_vars.items():
+                _cmd.append(f"export {k}='{v}'")
+        _cmd.append(f"jobc-watch '{jobc_var_dir}' '{session_name + '-' + str(session_id)}'")
+        return "; ".join(_cmd)
+    return screen_create_session_group(session_name, num_sessions=num_sessions, cmd_gen=_cmd_gen, verbose=True)
