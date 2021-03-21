@@ -162,4 +162,4 @@ def jobc_watch_create_session_group(
                 _cmd.append(f"export {k}='{v}'")
         _cmd.append(f"jobc-watch '{jobc_var_dir}' '{session_name + '-' + str(session_id)}'")
         return "; ".join(_cmd)
-    return screen_create_session_group(session_name, num_sessions=num_sessions, cmd_gen=_cmd_gen, verbose=True)
+    return screen_create_session_group(session_name, num_sessions=num_sessions, cmd_gen=_cmd_gen, verbose=verbose)
