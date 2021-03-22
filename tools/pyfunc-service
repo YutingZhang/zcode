@@ -11,9 +11,17 @@ import importlib
 from zutils.rpyc_serializing_interface import start_function_service
 
 
+import logging
+logging.basicConfig(
+    format='%(asctime)s [%(levelname)-8s] %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="ZCode Generic RPyC service for python function"
+        description="ZCode Generic RPyC Service for python function"
     )
     parser.add_argument(
         "--package", "-P", dest="package", nargs="*", default=[],

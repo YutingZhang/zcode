@@ -2,9 +2,11 @@ __all__ = [
     "serialized_interface",
     "serialized_call",
     "SerializedConnection",
-    "Service", "ThreadedServer", "ForkingServer", "ThreadPoolServer", "OneShotServer"
+    "Service", "ThreadedServer", "ForkingServer", "ThreadPoolServer", "OneShotServer",
     "plac",
     "start_function_service",
+    "BasicFunctionServiceConnection",
+    "FunctionServiceConnection"
 ]
 
 import rpyc
@@ -17,12 +19,23 @@ import pickle
 import inspect
 import plac
 from threading import Lock
+import sys
+import logging
+
+logging.basicConfig(
+    format='%(asctime)s [%(levelname)-8s] %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 
 def serialize(a):
     try:
         return pyarrow.serialize(a).to_buffer().to_pybytes()
     except (KeyboardInterrupt, SystemExit):
+        raise
+    except:
         return pickle.dumps(a)
 
 
@@ -30,6 +43,8 @@ def deserialize(b):
     try:
         return pyarrow.deserialize(b)
     except (KeyboardInterrupt, SystemExit):
+        raise
+    except:
         return pickle.loads(b)
 
 
@@ -98,6 +113,9 @@ class GenericFunctionService(Service):
         except TypeError:
             # mysterious behavior. worked when try twice
             self._arg_parser = plac.parser_from(self._func)
+        self._arg_parser.func = None
+        self._arg_parser.obj = None
+        self._num_request = 0
 
     @serialized_interface
     def exposed_signature(self):
@@ -109,7 +127,16 @@ class GenericFunctionService(Service):
 
     @serialized_interface
     def exposed_run(self, *args, **kwargs):
-        return self._func(*args, **kwargs)
+        with self._run_lock:
+            self._num_request += 1
+            try:
+                logger.info(" - Request:", self._num_request, ": START")
+                results = self._func(*args, **kwargs)
+                logger.info(" - Request:", self._num_request, ": END")
+            except:
+                logger.warning(" - Request:", self._num_request, ": Interrupted")
+                raise
+            return results
 
 
 def start_function_service(func: Callable, port: int):
@@ -117,3 +144,31 @@ def start_function_service(func: Callable, port: int):
     s.start()
 
 
+class BasicFunctionServiceConnection:
+    def __init__(self, *args, **kwargs):
+        self._conn = SerializedConnection(*args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        self._conn.root.run(*args, **kwargs)
+
+
+class FunctionServiceConnection(BasicFunctionServiceConnection):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._signature = self._conn.root.signature()
+        self._arg_parser = self._conn.root.argparser()
+        self._arg_parser.obj = self._arg_parser.func = self.run
+
+    @property
+    def arg_parser(self) -> plac.ArgumentParser:
+        return self._arg_parser
+
+    @property
+    def signature(self) -> inspect.Signature:
+        return self._signature
+
+    def run_from_cmd_args(self, args=None):
+        if args is None:
+            args = sys.argv[1:]
+        cmd, results = self.arg_parser.consume(args)
+        return results
