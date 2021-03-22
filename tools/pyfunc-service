@@ -26,9 +26,9 @@ def main():
     package_dirs = list(args.package)
     func_spec = args.function_spec
     if ":" in func_spec:
-        func_spec_fn_func = func_spec.split(',')
+        func_spec_fn_func = func_spec.split(':')
         func_name = func_spec_fn_func[-1]
-        py_filename = ":".join(func_spec_fn_func[:-1])
+        py_filename = os.path.abspath(":".join(func_spec_fn_func[:-1]))
         module_name = os.path.splitext(os.path.basename(py_filename))[0]
         func_spec = module_name + "." + func_name
         package_dirs.append(os.path.dirname(py_filename))
