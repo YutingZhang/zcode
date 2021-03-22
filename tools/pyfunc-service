@@ -41,8 +41,11 @@ def main():
     func_spec_chain = func_spec.split('.')
     func_name = func_spec_chain[-1]
     module_name = ".".join(func_spec_chain[:-1])
+    print("Load module:", module_name)
     mod = importlib.import_module(module_name)
+    print("Load function:", func_name)
     func = getattr(mod, func_name)
+    print("Start service at", args.port)
     start_function_service(func, args.port)
 
 

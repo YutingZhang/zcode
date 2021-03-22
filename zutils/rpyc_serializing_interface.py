@@ -93,7 +93,11 @@ class GenericFunctionService(Service):
         self._func = func
         self._run_lock = Lock()
         self._signature = inspect.signature(self._func)
-        self._arg_parser = plac.parser_from(self._func)
+        try:
+            self._arg_parser = plac.parser_from(self._func)
+        except TypeError:
+            # mysterious behavior. worked when try twice
+            self._arg_parser = plac.parser_from(self._func)
 
     @serialized_interface
     def exposed_signature(self):
