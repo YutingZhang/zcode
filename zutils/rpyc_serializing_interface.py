@@ -3,6 +3,8 @@ __all__ = [
     "serialized_call",
     "SerializedConnection",
     "Service", "ThreadedServer", "ForkingServer", "ThreadPoolServer", "OneShotServer"
+    "plac",
+    "start_function_service",
 ]
 
 import rpyc
@@ -11,14 +13,24 @@ import pyarrow
 from typing import Callable
 from functools import partial
 import time
+import pickle
+import inspect
+import plac
+from threading import Lock
 
 
 def serialize(a):
-    return pyarrow.serialize(a).to_buffer().to_pybytes()
+    try:
+        return pyarrow.serialize(a).to_buffer().to_pybytes()
+    except (KeyboardInterrupt, SystemExit):
+        return pickle.dumps(a)
 
 
 def deserialize(b):
-    return pyarrow.deserialize(b)
+    try:
+        return pyarrow.deserialize(b)
+    except (KeyboardInterrupt, SystemExit):
+        return pickle.loads(b)
 
 
 def serialized_interface(f: Callable):      # modifier
@@ -41,7 +53,7 @@ def serialized_call(*args, **kwargs):
 
 
 class SerializedConnection:
-    def __init__(self, hostname: str, port: int, retry_interval_until_success: float = -1, timeout: float=None):
+    def __init__(self, hostname: str, port: int, retry_interval_until_success: float = -1, timeout: float = None):
         config = dict(
             sync_request_timeout=timeout
         )
@@ -73,3 +85,31 @@ class _SerializedConnectionRoot:
             raise KeyError(item)
         func = getattr(self._conn.root, item)
         return partial(serialized_call, func)
+
+
+class GenericFunctionService(Service):
+    def __init__(self, func: Callable):
+        super().__init__()
+        self._func = func
+        self._run_lock = Lock()
+        self._signature = inspect.signature(self._func)
+        self._arg_parser = plac.parser_from(self._func)
+
+    @serialized_interface
+    def exposed_signature(self):
+        return self._signature
+
+    @serialized_interface
+    def exposed_argparser(self):
+        return self._arg_parser
+
+    @serialized_interface
+    def exposed_run(self, *args, **kwargs):
+        return self._func(*args, **kwargs)
+
+
+def start_function_service(func: Callable, port: int):
+    s = ThreadedServer(GenericFunctionService(func), port=port)
+    s.start()
+
+
