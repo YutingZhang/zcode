@@ -110,7 +110,9 @@ def screen_session_exists(session_name: str, index: int = None):
 
 
 def screen_create_session(session_name: str, cmd: str, index: int = None, verbose: bool = True):
+    cmd = f'export WORKER_SESSION_GROUP_NAME={session_name}; ' + cmd
     session_name = _screen_session_name_with_index(session_name, index)
+    cmd = f'export WORKER_SESSION_NAME={session_name}; ' + cmd
     if index is not None:
         cmd = f'export WORKER_SESSION_ID={index}; ' + cmd
     full_cmd = f"screen -S {session_name} -d -m bash -c '{cmd}'"
