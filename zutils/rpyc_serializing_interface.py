@@ -13,7 +13,6 @@ from functools import partial
 import time
 
 
-
 def serialize(a):
     return pyarrow.serialize(a).to_buffer().to_pybytes()
 
