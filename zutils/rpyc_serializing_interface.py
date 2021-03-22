@@ -1,18 +1,17 @@
 __all__ = [
     "serialized_interface",
     "serialized_call",
-    "Service",
     "SerializedConnection",
+    "Service", "ThreadedServer", "ForkingServer", "ThreadPoolServer", "OneShotServer"
 ]
 
 import rpyc
+from rpyc import Service, ThreadedServer, ForkingServer, ThreadPoolServer, OneShotServer
 import pyarrow
 from typing import Callable
 from functools import partial
 import time
 
-
-Service = rpyc.Service
 
 
 def serialize(a):
