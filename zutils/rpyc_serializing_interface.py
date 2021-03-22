@@ -43,7 +43,7 @@ def serialized_call(*args, **kwargs):
 
 
 class SerializedConnection:
-    def __init__(self, hostname: str, port: int, retry_interval_until_success: float = -1, timeout=60):
+    def __init__(self, hostname: str, port: int, retry_interval_until_success: float = -1, timeout: float=None):
         config = dict(
             sync_request_timeout=timeout
         )
