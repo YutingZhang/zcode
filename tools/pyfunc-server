@@ -26,7 +26,7 @@ def main():
         description="ZCode Generic RPyC Service for python function"
     )
     parser.add_argument(
-        "--package", "-P", dest="package", nargs="*", default=[],
+        "--package", "-P", dest="package", action='append', default=[],
         help="all the paths to be included for python package search"
     )
     parser.add_argument(dest="function_spec", type=str, help="[ModuleName/FileName].[FunctionName]")
