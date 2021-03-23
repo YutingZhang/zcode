@@ -7,7 +7,7 @@ if ZCODE_PATH not in sys.path:
     sys.path.insert(0, ZCODE_PATH)
 
 import argparse
-from zutils.rpyc_serializing_interface import start_function_service
+from zutils.rpyc_serializing_interface import plac
 from z_python_utils.classes import load_obj_from_file
 
 
@@ -23,20 +23,27 @@ logger = logging.getLogger()
 
 def main():
     parser = argparse.ArgumentParser(
-        description="ZCode Generic RPyC Service for python function"
+        description="ZCode Generic RPyC Runner for python function"
     )
     parser.add_argument(
         "--package", "-P", dest="package", nargs="*", default=[],
         help="all the paths to be included for python package search"
     )
     parser.add_argument(dest="function_spec", type=str, help="[ModuleName/FileName].[FunctionName]")
-    parser.add_argument(dest="port", type=int, help="Server port")
-    args = parser.parse_args()
 
-    logger.info("Load module")
+    client_cmd_args = []
+    func_cmd_args = []
+    active_args = client_cmd_args
+    for a in sys.argv[1:]:
+        active_args.append(a)
+        if active_args is client_cmd_args and not a.startswith("-"):
+            active_args = func_cmd_args
+
+    args = parser.parse_args(client_cmd_args)
+
     package_dirs = list(args.package)
     func = load_obj_from_file(args.function_spec, package_dirs=package_dirs)
-    start_function_service(func, args.port)
+    plac.call(func, func_cmd_args)
 
 
 if __name__ == "__main__":
