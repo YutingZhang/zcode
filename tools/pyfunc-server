@@ -9,6 +9,7 @@ if ZCODE_PATH not in sys.path:
 import argparse
 import importlib
 from zutils.rpyc_serializing_interface import start_function_service
+from z_python_utils.classes import load_obj_from_file
 
 
 import logging
@@ -33,29 +34,9 @@ def main():
     parser.add_argument(dest="port", type=int, help="Server port")
     args = parser.parse_args()
 
+    logger.info("Load module")
     package_dirs = list(args.package)
-    func_spec = args.function_spec
-    if ":" in func_spec:
-        func_spec_fn_func = func_spec.split(':')
-        func_name = func_spec_fn_func[-1]
-        py_filename = os.path.abspath(":".join(func_spec_fn_func[:-1]))
-        module_name = os.path.splitext(os.path.basename(py_filename))[0]
-        func_spec = module_name + "." + func_name
-        package_dirs.append(os.path.dirname(py_filename))
-
-    for pp in package_dirs:
-        pp = os.path.abspath(pp)
-        if pp not in sys.path:
-            sys.path.insert(0, pp)
-
-    func_spec_chain = func_spec.split('.')
-    func_name = func_spec_chain[-1]
-    module_name = ".".join(func_spec_chain[:-1])
-    logger.info("Load module: " + module_name)
-    mod = importlib.import_module(module_name)
-    logger.info("Load function: " + func_name)
-    func = getattr(mod, func_name)
-    logger.info(f"Start service at {args.port}")
+    func = load_obj_from_file(args.function_spec, package_dirs=package_dirs)
     start_function_service(func, args.port)
 
 

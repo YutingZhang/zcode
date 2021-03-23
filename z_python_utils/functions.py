@@ -237,3 +237,5 @@ class BindCodeBlocks:
     def __call__(self, *args, **kwargs):
         with self._code_blocks:
             return self._func(*args, **kwargs)
+
+

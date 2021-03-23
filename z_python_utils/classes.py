@@ -1,8 +1,10 @@
 import inspect
 from inspect import isfunction, ismethod
-from typing import List, Iterable
+from typing import List, Iterable, Optional
 import random
 import os
+import sys
+import importlib
 
 
 __all__ = [
@@ -23,6 +25,8 @@ __all__ = [
     'ObjectWrapper',
     'wrap_obj',
     'SizedWrapperOfIterable',
+    'get_class_fullname',
+    'load_obj_from_file',
 ]
 
 
@@ -398,3 +402,28 @@ def get_class_fullname(a, use_filename_for_main: bool = False):
             module_name = os.path.abspath(mod.__file__) + "#"
     class_name = a.__name__
     return module_name + "." + class_name
+
+
+def load_obj_from_file(obj_spec: str, package_dirs: Optional[List[str]] = None):
+    if not package_dirs:
+        package_dirs = []
+
+    if ":" in obj_spec:
+        obj_spec_fn_obj = obj_spec.split(':')
+        obj_name = obj_spec_fn_obj[-1]
+        py_filename = os.path.abspath(":".join(obj_spec_fn_obj[:-1]))
+        module_name = os.path.splitext(os.path.basename(py_filename))[0]
+        obj_spec = module_name + "." + obj_name
+        package_dirs.append(os.path.dirname(py_filename))
+
+    for pp in package_dirs:
+        pp = os.path.abspath(pp)
+        if pp not in sys.path:
+            sys.path.insert(0, pp)
+
+    obj_spec_chain = obj_spec.split('.')
+    obj_name = obj_spec_chain[-1]
+    module_name = ".".join(obj_spec_chain[:-1])
+    mod = importlib.import_module(module_name)
+    obj = getattr(mod, obj_name)
+    return obj

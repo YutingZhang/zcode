@@ -20,7 +20,7 @@ logging.basicConfig(
 def main():
 
     parser = argparse.ArgumentParser(
-        description="ZCode Generic RPyC Clinet for python function"
+        description="ZCode Generic RPyC Client for python function"
     )
     parser.add_argument(dest="host_port", type=str, help="ServerName:Port")
     parser.add_argument(
