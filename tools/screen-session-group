@@ -33,7 +33,11 @@ def main():
         gpus_per_session = 0
         num_gpus = -1
 
-    cmd = " ".join('"%s"' % x.replace('"', '\"') for x in args.cmd)
+    assert args.cmd, "must specify a command"
+    if len(args.cmd) == 1:
+        cmd = args.cmd
+    else:
+        cmd = " ".join('"%s"' % x.replace('"', '\"') for x in args.cmd)
 
     def _env_var_gen(_i: int):
         _env_dict = dict()
