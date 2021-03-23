@@ -18,6 +18,8 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
+logger = logging.getLogger()
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -49,11 +51,11 @@ def main():
     func_spec_chain = func_spec.split('.')
     func_name = func_spec_chain[-1]
     module_name = ".".join(func_spec_chain[:-1])
-    print("Load module:", module_name)
+    logger.info("Load module: " + module_name)
     mod = importlib.import_module(module_name)
-    print("Load function:", func_name)
+    logger.info("Load function: " + func_name)
     func = getattr(mod, func_name)
-    print("Start service at", args.port)
+    logger.info(f"Start service at {args.port}")
     start_function_service(func, args.port)
 
 

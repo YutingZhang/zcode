@@ -12,7 +12,7 @@ __all__ = [
 import rpyc
 from rpyc import Service, ThreadedServer, ForkingServer, ThreadPoolServer, OneShotServer
 import pyarrow
-from typing import Callable
+from typing import Callable, Iterable
 from functools import partial
 import time
 import pickle
@@ -24,11 +24,6 @@ import logging
 from z_python_utils.classes import value_class_for_with
 
 
-logging.basicConfig(
-    format='%(asctime)s [%(levelname)-8s] %(message)s',
-    level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
 logger = logging.getLogger(__name__)
 
 
@@ -107,6 +102,18 @@ class _SerializedConnectionRoot:
 # function server -------------------------------------
 
 
+def patched_annotation_from_(cls, obj):
+    "Helper to convert an object into an annotation, if needed"
+    if plac.is_annotation(obj):
+        return obj  # do nothing
+    elif isinstance(obj, Iterable) and not isinstance(obj, (str, bytes)):
+        return cls(*obj)
+    if inspect.isclass(obj):
+        obj = str(obj)
+    return cls(obj)
+
+plac.Annotation.from_ = classmethod(patched_annotation_from_)
+
 _origin_set_func_argspec = plac.ArgumentParser._set_func_argspec
 
 hijack_argspec = value_class_for_with(None)
@@ -144,11 +151,11 @@ class GenericFunctionService(Service):
         with self._run_lock:
             self._num_request += 1
             try:
-                logger.info(" - Request:", self._num_request, ": START")
+                logger.info(f" - Request: {self._num_request} : START")
                 results = self._func(*args, **kwargs)
-                logger.info(" - Request:", self._num_request, ": END")
+                logger.info(f" - Request: {self._num_request} : END")
             except:
-                logger.warning(" - Request:", self._num_request, ": Interrupted")
+                logger.warning(f" - Request: {self._num_request} : Interrupted")
                 raise
             return results
 
