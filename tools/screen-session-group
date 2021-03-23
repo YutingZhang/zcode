@@ -35,7 +35,7 @@ def main():
 
     assert args.cmd, "must specify a command"
     if len(args.cmd) == 1:
-        cmd = args.cmd
+        cmd = args.cmd[0]
     else:
         cmd = " ".join('"%s"' % x.replace('"', '\"') for x in args.cmd)
 
