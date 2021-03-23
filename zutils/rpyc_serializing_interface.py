@@ -21,6 +21,8 @@ import plac
 from threading import Lock
 import sys
 import logging
+from z_python_utils.classes import value_class_for_with
+
 
 logging.basicConfig(
     format='%(asctime)s [%(levelname)-8s] %(message)s',
@@ -102,6 +104,23 @@ class _SerializedConnectionRoot:
         return partial(serialized_call, func)
 
 
+# function server -------------------------------------
+
+
+_origin_set_func_argspec = plac.ArgumentParser._set_func_argspec
+
+hijack_argspec = value_class_for_with(None)
+
+
+def _revised_set_func_argspec(self, obj):
+    _origin_set_func_argspec(self, obj)
+    if hijack_argspec.current_value is not None:
+        self.argspec = hijack_argspec.current_value
+
+
+plac.ArgumentParser._set_func_argspec = _revised_set_func_argspec
+
+
 class GenericFunctionService(Service):
     def __init__(self, func: Callable):
         super().__init__()
@@ -109,12 +128,11 @@ class GenericFunctionService(Service):
         self._run_lock = Lock()
         self._signature = inspect.signature(self._func)
         try:
-            self._arg_parser = plac.parser_from(self._func)
+            _arg_parser = plac.parser_from(self._func)
         except TypeError:
             # mysterious behavior. worked when try twice
-            self._arg_parser = plac.parser_from(self._func)
-        self._arg_parser.func = None
-        self._arg_parser.obj = None
+            _arg_parser = plac.parser_from(self._func)
+        self._argspec = _arg_parser.argspec
         self._num_request = 0
 
     @serialized_interface
@@ -122,8 +140,8 @@ class GenericFunctionService(Service):
         return self._signature
 
     @serialized_interface
-    def exposed_argparser(self):
-        return self._arg_parser
+    def exposed_argspec(self):
+        return self._argspec
 
     @serialized_interface
     def exposed_run(self, *args, **kwargs):
@@ -156,12 +174,21 @@ class FunctionServiceConnection(BasicFunctionServiceConnection):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._signature = self._conn.root.signature()
-        self._arg_parser = self._conn.root.argparser()
-        self._arg_parser.obj = self._arg_parser.func = self.run
+        self._argspec = self._conn.root.argspec()
+        with hijack_argspec(self._argspec):
+            try:
+                self._argparser = plac.parser_from(self.run)
+            except TypeError:
+                # mysterious behavior. worked when try twice
+                self._argparser = plac.parser_from(self.run)
 
     @property
-    def arg_parser(self) -> plac.ArgumentParser:
-        return self._arg_parser
+    def argparser(self):
+        return self._argparser
+
+    @property
+    def argspec(self):
+        return self._argspec
 
     @property
     def signature(self) -> inspect.Signature:
@@ -170,5 +197,5 @@ class FunctionServiceConnection(BasicFunctionServiceConnection):
     def run_from_cmd_args(self, args=None):
         if args is None:
             args = sys.argv[1:]
-        cmd, results = self.arg_parser.consume(args)
+        cmd, results = self.argparser.consume(args)
         return results
