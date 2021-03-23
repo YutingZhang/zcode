@@ -127,11 +127,7 @@ class GenericFunctionService(Service):
         self._func = func
         self._run_lock = Lock()
         self._signature = inspect.signature(self._func)
-        try:
-            _arg_parser = plac.parser_from(self._func)
-        except TypeError:
-            # mysterious behavior. worked when try twice
-            _arg_parser = plac.parser_from(self._func)
+        _arg_parser = plac.parser_from(self._func)
         self._argspec = _arg_parser.argspec
         self._num_request = 0
 
@@ -176,11 +172,7 @@ class FunctionServiceConnection(BasicFunctionServiceConnection):
         self._signature = self._conn.root.signature()
         self._argspec = self._conn.root.argspec()
         with hijack_argspec(self._argspec):
-            try:
-                self._argparser = plac.parser_from(self.run)
-            except TypeError:
-                # mysterious behavior. worked when try twice
-                self._argparser = plac.parser_from(self.run)
+            self._argparser = plac.parser_from(self.run)
 
     @property
     def argparser(self):
