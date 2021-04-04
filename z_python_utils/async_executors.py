@@ -3,6 +3,7 @@ from concurrent import futures
 from threading import Lock, Thread
 from collections import deque
 from functools import partial, lru_cache
+import ctypes
 import time
 import tempfile
 import pickle
@@ -351,39 +352,28 @@ def async_detechable_thread_call(*args, **kwargs):
     _ = DetachableExecutorWrapper(thread, join_func_name='join')
 
 
-class FunctionWithMultiProcess:
+class CachedExecutorWrapper:
+    """
+    the executor wrapped can use lru cache for submitted jobs
+    """
 
-    def __init__(self, func: Callable, num_workers: int = 0, cache_size_per_worker: int = 0, use_thread: bool = False):
-        self._func = func
-        if num_workers > 0:
-            self.p_executor = (
-                futures.ThreadPoolExecutor(max_workers=num_workers) if use_thread else
-                futures.ProcessPoolExecutor(max_workers=num_workers)
-            )
-        else:
-            self.p_executor = ImmediateExecutor()
-
-        self.cache_size = max(0, cache_size_per_worker) * max(1, num_workers)
+    def __init__(self, executor, cache_size: int = 1):
+        self._executor = executor
+        self._cache_size = cache_size
         if self.cache_size > 0:
-            self._async_run_thread_unsafe = lru_cache(maxsize=self.cache_size)(self._async_run_plain)
+            self._cached_submit = lru_cache(maxsize=self.cache_size)(executor.submit)
         else:
-            self._async_run_thread_unsafe = self._async_run_plain
-        self._lock_async_run = Lock()
+            self._cached_submit = self._async_run_plain
+        self._cached_submit_lock = Lock()
 
-    def _async_run_plain(self, *args, **kwargs):
-        return self.p_executor.submit(self._func, *args, **kwargs)
-
-    def _async_run_thread_safe(self, *args, **kwargs):
-        with self._lock_async_run:
-            return self._async_run_thread_unsafe(*args, **kwargs)
-
-    def __call__(self, *args, **kwargs):
-        r = self._async_run_thread_safe(*args, **kwargs)
-        r.result()
+    def __getattr__(self, item):
+        if hasattr(self._executor, item):
+            return getattr(self._executor, item)
+        raise AttributeError("Attribute does not exist: %s" % item)
 
     def submit(self, *args, **kwargs):
-        return self._async_run_thread_safe(*args, **kwargs)
-
+        with self._cached_submit_lock:
+            return self._cached_submit(*args, **kwargs)
 
 
 def _heart_beat(interval: float, callback: Callable, running_lock: Lock, alive_lock: Lock):
