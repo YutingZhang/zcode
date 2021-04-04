@@ -247,6 +247,10 @@ class ProcessPoolExecutorWithProgressBar:
 
     def __del__(self):
         self._close_pbar()
+        self._executor.shutdown()
+
+    def shutdown(self, *args, **kwargs):
+        self._executor.shutdown(*args, **kwargs)
 
     def get_results(self):
         assert self._store_results, "results are not stored"
