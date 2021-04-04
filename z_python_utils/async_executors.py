@@ -2,7 +2,7 @@ from typing import Union, Callable, Optional
 from concurrent import futures
 from threading import Lock, Thread
 from collections import deque
-from functools import partial
+from functools import partial, lru_cache
 import time
 import tempfile
 import pickle
@@ -349,6 +349,41 @@ def async_detechable_thread_call(*args, **kwargs):
     thread = Thread(target=args[0], args=args[1:], kwargs=kwargs)
     thread.start()
     _ = DetachableExecutorWrapper(thread, join_func_name='join')
+
+
+class FunctionWithMultiProcess:
+
+    def __init__(self, func: Callable, num_workers: int = 0, cache_size_per_worker: int = 0, use_thread: bool = False):
+        self._func = func
+        if num_workers > 0:
+            self.p_executor = (
+                futures.ThreadPoolExecutor(max_workers=num_workers) if use_thread else
+                futures.ProcessPoolExecutor(max_workers=num_workers)
+            )
+        else:
+            self.p_executor = ImmediateExecutor()
+
+        self.cache_size = max(0, cache_size_per_worker) * max(1, num_workers)
+        if self.cache_size > 0:
+            self._async_run_thread_unsafe = lru_cache(maxsize=self.cache_size)(self._async_run_plain)
+        else:
+            self._async_run_thread_unsafe = self._async_run_plain
+        self._lock_async_run = Lock()
+
+    def _async_run_plain(self, *args, **kwargs):
+        return self.p_executor.submit(self._func, *args, **kwargs)
+
+    def _async_run_thread_safe(self, *args, **kwargs):
+        with self._lock_async_run:
+            return self._async_run_thread_unsafe(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        r = self._async_run_thread_safe(*args, **kwargs)
+        r.result()
+
+    def submit(self, *args, **kwargs):
+        return self._async_run_thread_safe(*args, **kwargs)
+
 
 
 def _heart_beat(interval: float, callback: Callable, running_lock: Lock, alive_lock: Lock):
