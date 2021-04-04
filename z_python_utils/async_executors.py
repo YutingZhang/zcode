@@ -129,11 +129,11 @@ class _ImmediateResult:
 
 
 class ImmediateExecutor:
-    def __call__(self, *args, **kwargs):
+    def submit(self, *args, **kwargs):
         return _ImmediateResult(args[0](*args[1:], **kwargs))
 
-    def submit(self, *args, **kwargs):
-        return self(*args, **kwargs)
+    def __call__(self, *args, **kwargs):
+        return self.submit(*args, **kwargs)
 
     def join(self, *args, **kwargs):
         pass
@@ -360,8 +360,8 @@ class CachedExecutorWrapper:
     def __init__(self, executor, cache_size: int = 1):
         self._executor = executor
         self._cache_size = cache_size
-        if self.cache_size > 0:
-            self._cached_submit = lru_cache(maxsize=self.cache_size)(executor.submit)
+        if self._cache_size > 0:
+            self._cached_submit = lru_cache(maxsize=self._cache_size)(executor.submit)
         else:
             self._cached_submit = self._async_run_plain
         self._cached_submit_lock = Lock()
