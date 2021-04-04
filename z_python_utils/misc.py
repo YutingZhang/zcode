@@ -41,6 +41,23 @@ def float_to_rational(a, max_denominator=10):
     return output
 
 
+class _IdAsHash:
+    def __init__(self, val):
+        self.val = val
+
+    def __hash__(self):
+        return id(self.val)
+
+    def __eq__(self, other):
+        return id(self.val) == id(other.val)
+
+
+def unique_per_id(a: Iterable):
+    b = set(_IdAsHash(x) for x in a)
+    u = [x.val for x in b]
+    return u
+
+
 # -----------------------------------------------------------------------------
 # Based on: https://stackoverflow.com/users/2069807/mrwonderful
 
