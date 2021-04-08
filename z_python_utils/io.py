@@ -13,7 +13,8 @@ from .time import timestamp_for_filename
 from .classes import dummy_class_for_with
 import fcntl
 from contextlib import contextmanager
-
+import json
+import pickle
 
 
 def path_full_split(p):
@@ -398,3 +399,29 @@ def open_with_lock(filename, mode='r'):
         fcntl.flock(fd, fcntl.LOCK_SH if mode.startswith('r') else fcntl.LOCK_EX)
         yield fd
         fcntl.flock(fd, fcntl.LOCK_UN)
+
+
+def read_json_or_pkl(fn: str):
+    if not (fn.endswith('.json') or fn.endswith('.pkl')) or not os.path.exists(fn):
+        if fn.endswith('.json') or fn.endswith('.pkl'):
+            bare_fn_fn = os.path.splitext(fn)[0]
+        else:
+            bare_fn_fn = fn
+        candidate_filenames = {bare_fn_fn + ".json", bare_fn_fn + ".pkl"} - {fn}
+        candidate_fn = ''
+        for candidate_fn in candidate_filenames:
+            if os.path.exists(candidate_fn):
+                fn = candidate_fn
+                break
+        if candidate_fn != fn:
+            raise FileNotFoundError(f"file does not exist: {fn}")
+
+    if fn.endswith('.pkl'):
+        with open(fn, 'rb') as f:
+            a = pickle.load(f)
+    elif fn.endswith('.json'):
+        with open(fn, 'r') as f:
+            a = json.load(f)
+    else:
+        raise AssertionError('filename must be a pickle or json file')
+    return a
