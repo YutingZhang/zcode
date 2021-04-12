@@ -141,6 +141,9 @@ class ImmediateExecutor:
     def join_and_shutdown(self, *args, **kwargs):
         pass
 
+    def shutdown(self, *args, **kwargs):
+        pass
+
 
 ProcessWorkerExecutor = partial(WorkerExecutor, use_thread_pool=False)
 ThreadWorkerExecutor = partial(WorkerExecutor, use_thread_pool=True)
