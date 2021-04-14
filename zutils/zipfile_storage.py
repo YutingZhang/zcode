@@ -146,6 +146,9 @@ def serialize_and_add_to_zip_queue(
     elif isinstance(value, str):
         ext = ".str.txt"
         s = value.encode(encoding='UTF-8')
+    elif isinstance(value, bytes):
+        ext = ".bytes"
+        s = value
     else:
         ext = ".pkl"
         s = pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)
@@ -176,6 +179,8 @@ def deserialize_from_zip(
         value = int(s.decode(encoding='UTF-8'))
     elif ext == ".str.txt":
         value = s.decode(encoding='UTF-8')
+    elif ext == ".bytes":
+        value = s
     else:
         value = pickle.loads(s)
     return value
