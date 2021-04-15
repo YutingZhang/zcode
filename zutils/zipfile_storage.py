@@ -35,6 +35,8 @@ class ZipFileStorage:
                 ext = ".int.txt"
             elif fn.endswith(".str.txt"):
                 ext = ".str.txt"
+            elif fn.endswith(".bytes"):
+                ext = ".bytes"
             if ext:
                 self._key2ext[fn[:-len(ext)]] = ext
 
