@@ -6,12 +6,17 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 import pickle
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Callable, Any
+from functools import partial
 from z_python_utils.classes import SizedWrapperOfIterable
 
 
 class ZipFileStorage:
-    def __init__(self, file: str, mode='r', *args, num_workers: int = 4, **kwargs):
+    def __init__(
+            self, file: str, mode='r', *args, num_workers: int = 4,
+            serialization_func: Callable[[Any], bytes] = None, deserialization_func: Callable[[bytes], Any] = None,
+            **kwargs
+    ):
         """
         refer the zipfile.ZipFile
         """
@@ -25,6 +30,10 @@ class ZipFileStorage:
         self._init_key2ext_mapping()
         self._prefetch_size = num_workers * 2
         self._is_closed = False
+        self._serialization_func = (
+            serialization_func if serialization_func else partial(pickle.dumps, protocol=pickle.HIGHEST_PROTOCOL)
+        )
+        self._deserialization_func = deserialization_func if deserialization_func else pickle.loads
 
     def _init_key2ext_mapping(self):
         for fn in self._zf.namelist():
@@ -43,7 +52,9 @@ class ZipFileStorage:
     def __getitem__(self, key):
         key = str(key)
         ext = self._key2ext[key]
-        value = deserialize_from_zip(key, ext, self._zf, self._cache, self._cache_access_lock)
+        value = deserialize_from_zip(
+            key, ext, self._zf, self._cache, self._cache_access_lock, self._deserialization_func
+        )
         return value
 
     def __setitem__(self, key, value):
@@ -51,7 +62,7 @@ class ZipFileStorage:
         key = str(key)
         r = self._pickle_executor.submit(
             serialize_and_add_to_zip_queue, key, value, self._zipfile_executor,
-            self._zf, self._cache, self._cache_access_lock
+            self._zf, self._cache, self._cache_access_lock, self._serialization_func
         )
         with self._cache_access_lock:
             self._cache[key] = value, r
@@ -103,7 +114,9 @@ class ZipFileStorage:
             ext = self._key2ext[key]
             prefetched[n] = key, self._pickle_executor.submit(
                 deserialize_from_zip,
-                key, ext, self._zf, self._cache, self._cache_access_lock, self._zipfile_executor
+                key, ext, self._zf, self._cache, self._cache_access_lock,
+                self._deserialization_func,
+                self._zipfile_executor
             )
 
             n = n + 1
@@ -140,7 +153,8 @@ class ZipFileStorage:
 
 def serialize_and_add_to_zip_queue(
         key, value, zipfile_executor: ThreadPoolExecutor,
-        zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock
+        zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock,
+        serialization_func: Callable[[Any], bytes]
 ):
     if isinstance(value, int):
         ext = ".int.txt"
@@ -153,7 +167,7 @@ def serialize_and_add_to_zip_queue(
         s = value
     else:
         ext = ".pkl"
-        s = pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)
+        s = serialization_func(value)
     zipfile_executor.submit(add_to_zip, key, ext, s, zf, cache, cache_access_lock)
 
 
@@ -165,6 +179,7 @@ def add_to_zip(key, ext: str, s, zf: zipfile.ZipFile, cache: dict, cache_access_
 
 def deserialize_from_zip(
         key: str, ext: str, zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock,
+        deserialization_func: Callable[[bytes], Any],
         zipfile_executor: Optional[ThreadPoolExecutor] = None
 ):
     with cache_access_lock:
@@ -184,5 +199,5 @@ def deserialize_from_zip(
     elif ext == ".bytes":
         value = s
     else:
-        value = pickle.loads(s)
+        value = deserialization_func(s)
     return value
