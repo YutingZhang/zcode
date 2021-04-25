@@ -60,12 +60,13 @@ class ZipFileStorage:
     def __setitem__(self, key, value):
         assert self._mode != 'r', "cannot set item in read mode"
         key = str(key)
+        with self._cache_access_lock:
+            self._cache[key] = cached_info = [value, None]
         r = self._pickle_executor.submit(
             serialize_and_add_to_zip_queue, key, value, self._zipfile_executor,
             self._zf, self._cache, self._cache_access_lock, self._serialization_func
         )
-        with self._cache_access_lock:
-            self._cache[key] = value, r
+        cached_info[1] = r
 
     def batch_set(self, keys, values):
         for k, v in zip(keys, values):
