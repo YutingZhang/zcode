@@ -26,6 +26,10 @@ def main():
         description="ZCode Generic RPyC Runner for python function"
     )
     parser.add_argument(
+        "--immediate-exit", action_store="true",
+        help="if specified, exit immediately via the system call. Do wait for thread/processes to join"
+    )
+    parser.add_argument(
         "--package", "-P", dest="package", action='append', default=[],
         help="all the paths to be included for python package search"
     )
@@ -44,6 +48,8 @@ def main():
     package_dirs = list(args.package)
     func = load_obj_from_file(args.function_spec, package_dirs=package_dirs)
     plac.call(func, func_cmd_args)
+    if args.immediate_exit:
+        os._exit(0)
 
 
 if __name__ == "__main__":
