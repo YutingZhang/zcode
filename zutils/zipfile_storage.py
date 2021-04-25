@@ -6,7 +6,7 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 import pickle
-from typing import Iterable, Optional, Callable, Any
+from typing import Iterable, Optional, Callable, Any, Dict
 from functools import partial
 from z_python_utils.classes import SizedWrapperOfIterable
 
@@ -64,7 +64,8 @@ class ZipFileStorage:
             self._cache[key] = cached_info = [value, None]
         r = self._pickle_executor.submit(
             serialize_and_add_to_zip_queue, key, value, self._zipfile_executor,
-            self._zf, self._cache, self._cache_access_lock, self._serialization_func
+            self._zf, self._cache, self._cache_access_lock,
+            self._key2ext, self._serialization_func
         )
         cached_info[1] = r
 
@@ -155,6 +156,7 @@ class ZipFileStorage:
 def serialize_and_add_to_zip_queue(
         key, value, zipfile_executor: ThreadPoolExecutor,
         zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock,
+        key2ext: Dict[str, str],
         serialization_func: Callable[[Any], bytes]
 ):
     if isinstance(value, int):
@@ -169,6 +171,8 @@ def serialize_and_add_to_zip_queue(
     else:
         ext = ".pkl"
         s = serialization_func(value)
+    with cache_access_lock:
+        key2ext[key] = ext
     zipfile_executor.submit(add_to_zip, key, ext, s, zf, cache, cache_access_lock)
 
 
