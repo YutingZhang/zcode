@@ -26,6 +26,7 @@ class ZipFileStorage:
         self._pickle_executor = ThreadPoolExecutor(max_workers=num_workers)
         self._cache = dict()
         self._cache_access_lock = Lock()
+        self._set_item_lock = Lock()
         self._key2ext = dict()
         self._init_key2ext_mapping()
         self._prefetch_size = num_workers * 2
@@ -58,6 +59,10 @@ class ZipFileStorage:
         return value
 
     def __setitem__(self, key, value):
+        with self._set_item_lock:
+            self._set_item(key, value)
+
+    def _set_item(self, key, value):
         assert self._mode != 'r', "cannot set item in read mode"
         key = str(key)
         with self._cache_access_lock:
