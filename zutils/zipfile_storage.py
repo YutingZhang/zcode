@@ -27,6 +27,7 @@ class ZipFileStorage:
         self._cache = dict()
         self._cache_access_lock = Lock()
         self._set_item_lock = Lock()
+        self._zip_lock = Lock()
         self._key2ext = dict()
         self._init_key2ext_mapping()
         self._prefetch_size = num_workers * 2
@@ -54,7 +55,7 @@ class ZipFileStorage:
         key = str(key)
         ext = self._key2ext[key]
         value = deserialize_from_zip(
-            key, ext, self._zf, self._cache, self._cache_access_lock, self._deserialization_func
+            key, ext, self._zf, self._cache, self._cache_access_lock, self._zip_lock, self._deserialization_func
         )
         return value
 
@@ -69,7 +70,7 @@ class ZipFileStorage:
             self._cache[key] = cached_info = [value, None]
         r = self._pickle_executor.submit(
             serialize_and_add_to_zip_queue, key, value, self._zipfile_executor,
-            self._zf, self._cache, self._cache_access_lock,
+            self._zf, self._cache, self._cache_access_lock, self._zip_lock,
             self._key2ext, self._serialization_func
         )
         cached_info[1] = r
@@ -121,7 +122,7 @@ class ZipFileStorage:
             ext = self._key2ext[key]
             prefetched[n] = key, self._pickle_executor.submit(
                 deserialize_from_zip,
-                key, ext, self._zf, self._cache, self._cache_access_lock,
+                key, ext, self._zf, self._cache, self._cache_access_lock, self._zip_lock,
                 self._deserialization_func,
                 self._zipfile_executor
             )
@@ -160,7 +161,7 @@ class ZipFileStorage:
 
 def serialize_and_add_to_zip_queue(
         key, value, zipfile_executor: ThreadPoolExecutor,
-        zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock,
+        zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock, zip_lock: Lock,
         key2ext: Dict[str, str],
         serialization_func: Callable[[Any], bytes]
 ):
@@ -178,17 +179,25 @@ def serialize_and_add_to_zip_queue(
         s = serialization_func(value)
     with cache_access_lock:
         key2ext[key] = ext
-    zipfile_executor.submit(add_to_zip, key, ext, s, zf, cache, cache_access_lock)
+    zipfile_executor.submit(add_to_zip, key, ext, s, zf, cache, cache_access_lock, zip_lock)
 
 
-def add_to_zip(key, ext: str, s, zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock):
-    zf.writestr(key + ext, s)
+def add_to_zip\
+                (key, ext: str, s, zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock, zip_lock: Lock):
+    with zip_lock:
+        zf.writestr(str(key) + ext, s)
     with cache_access_lock:
         cache.pop(key)
 
 
+def read_from_zip(key, ext: str, zf: zipfile.ZipFile, zip_lock: Lock):
+    with zip_lock:
+        s = zf.read(str(key) + ext)
+    return s
+
+
 def deserialize_from_zip(
-        key: str, ext: str, zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock,
+        key: str, ext: str, zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock, zip_lock: Lock,
         deserialization_func: Callable[[bytes], Any],
         zipfile_executor: Optional[ThreadPoolExecutor] = None
 ):
@@ -197,10 +206,10 @@ def deserialize_from_zip(
             return cache[key][0]
 
     if zipfile_executor is None:
-        s = zf.read(key + ext)
+        s = read_from_zip(key, ext, zf, zip_lock)
     else:
         # make sure to do unzip in a single thread
-        r = zipfile_executor.submit(zf.read, key + ext)
+        r = zipfile_executor.submit(zf.read, key, ext, zf, zip_lock)
         s = r.result()
     if ext == ".int.txt":
         value = int(s.decode(encoding='UTF-8'))
