@@ -98,3 +98,42 @@ def as_numpy_object_vec(a):
     for i, elt in enumerate(a):
         b[i] = elt
     return b
+
+
+class FindIntervalsForPoint:
+    def __init__(self, left, right):
+        self._interval_seps, self._indexes = self.get_intervals_and_indexes(left, right)
+
+    @staticmethod
+    def get_intervals_seps_and_indexes(left, right):
+        left = np.asarray(left)
+        right = np.asarray(right)
+        n = len(right)
+        assert len(left) == n, "left and right must have the same length"
+        if not n:
+            return np.zeros([0], dtype=left.dtype), np.zeros([0], dtype=object)
+
+        x = np.concatenate([left, right])
+        si = np.argsort(x, axis=0)
+        sx = x[si]
+        ux, ui = np.unique(sx, unique_indices=True)
+        ui = np.append(ui, 2 * n)
+        indexes = np.empty([len(ui)], dtype=object)
+        indexes[0] = set()
+        overlapped_set = set()
+        for j in np.arange(len(ux)):
+            for i in si[np.arange(ui[j], ui[j + 1])]:
+                if i < n:
+                    overlapped_set.add(i)
+                else:
+                    overlapped_set.remove(i - n)
+            indexes[j] = set(overlapped_set)
+
+        interval_seps = ux
+        return interval_seps, indexes
+
+    def interval_ids(self, y):
+        y = np.asarray(y)
+        js = np.searchsorted(self._interval_seps, y, side='right', sorter=self._si_left)
+        return self._indexes[js]
+
