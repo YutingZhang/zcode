@@ -26,7 +26,7 @@ def main():
         description="ZCode Generic RPyC Runner for python function"
     )
     parser.add_argument(
-        "--immediate-exit", action_store="true",
+        "--immediate-exit", action="store_true",
         help="if specified, exit immediately via the system call. Do wait for thread/processes to join"
     )
     parser.add_argument(
