@@ -170,7 +170,7 @@ def jobc_watch_create_session_group(
             _session_name = session_name + '-' + str(session_id)
         else:
             _session_name = session_name
-        _cmd.append(f"jobc-watch '{jobc_var_dir}' '{_session_name}'")
+        _cmd.append(f'jobc-watch "{jobc_var_dir}" "{_session_name}"')
         return "; ".join(_cmd)
     if num_sessions > 0:
         return screen_create_session_group(
