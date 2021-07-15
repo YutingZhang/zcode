@@ -15,6 +15,7 @@ import fcntl
 from contextlib import contextmanager
 import json
 import pickle
+import re
 
 
 def path_full_split(p):
@@ -72,7 +73,12 @@ def make_file_readonly(fn):
     os.chmod(fn, s & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH))  # make it read only
 
 
-def mkdir_p(dir_path):
+_mkdir_p_url_pattern = re.compile(r'^[^:/]+://')
+
+
+def mkdir_p(dir_path, ignore_url: bool = True):
+    if ignore_url and _mkdir_p_url_pattern.match(dir_path):
+        return
     if dir_path and not os.path.exists(dir_path):
         try:
             os.makedirs(dir_path)
@@ -80,8 +86,8 @@ def mkdir_p(dir_path):
             pass
 
 
-def mkpdir_p(fn):
-    mkdir_p(os.path.dirname(fn))
+def mkpdir_p(fn, *args, **kwargs):
+    mkdir_p(os.path.dirname(fn), *args, **kwargs)
 
 
 class LoggerSet:
