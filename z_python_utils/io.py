@@ -404,7 +404,7 @@ def different_subfolders_from_list(a: List[str]) -> (List[str], str):
 
 
 @contextmanager
-def open_with_lock(filename, mode='r', url_with_smart_open: bool = True):
+def open_with_lock(filename: str, mode='r', url_with_smart_open: bool = True):
     if url_with_smart_open and _url_pattern.match(filename):
         with smart_open.open(filename, mode) as fd:
             yield fd
@@ -413,6 +413,18 @@ def open_with_lock(filename, mode='r', url_with_smart_open: bool = True):
             fcntl.flock(fd, fcntl.LOCK_SH if mode.startswith('r') else fcntl.LOCK_EX)
             yield fd
             fcntl.flock(fd, fcntl.LOCK_UN)
+
+
+def smart_exists(filename: str):
+    if _url_pattern.match(filename):
+        try:
+            with smart_open.open(filename, 'rb'):
+                pass
+            return True
+        except (OSError, FileNotFoundError):
+            return False
+    else:
+        return os.path.exists(filename)
 
 
 def read_json_or_pkl(fn: str):
