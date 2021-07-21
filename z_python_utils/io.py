@@ -16,6 +16,10 @@ from contextlib import contextmanager
 import json
 import pickle
 import re
+try:
+    import smart_open
+except ModuleNotFoundError:
+    pass
 
 
 def path_full_split(p):
@@ -73,11 +77,11 @@ def make_file_readonly(fn):
     os.chmod(fn, s & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH))  # make it read only
 
 
-_mkdir_p_url_pattern = re.compile(r'^[^:/]+://')
+_url_pattern = re.compile(r'^[^:/]+://')
 
 
 def mkdir_p(dir_path, ignore_url: bool = True):
-    if ignore_url and _mkdir_p_url_pattern.match(dir_path):
+    if ignore_url and _url_pattern.match(dir_path):
         return
     if dir_path and not os.path.exists(dir_path):
         try:
@@ -400,11 +404,15 @@ def different_subfolders_from_list(a: List[str]) -> (List[str], str):
 
 
 @contextmanager
-def open_with_lock(filename, mode='r'):
-    with open(filename, mode) as fd:
-        fcntl.flock(fd, fcntl.LOCK_SH if mode.startswith('r') else fcntl.LOCK_EX)
-        yield fd
-        fcntl.flock(fd, fcntl.LOCK_UN)
+def open_with_lock(filename, mode='r', url_with_smart_open: bool = True):
+    if url_with_smart_open and _url_pattern.match(filename):
+        with smart_open.open(filename, mode) as fd:
+            yield fd
+    else:
+        with open(filename, mode) as fd:
+            fcntl.flock(fd, fcntl.LOCK_SH if mode.startswith('r') else fcntl.LOCK_EX)
+            yield fd
+            fcntl.flock(fd, fcntl.LOCK_UN)
 
 
 def read_json_or_pkl(fn: str):
