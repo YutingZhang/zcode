@@ -427,6 +427,21 @@ def smart_exists(filename: str):
         return os.path.exists(filename)
 
 
+def robust_remove(filename: str, ignore_url: bool = True):
+    """
+    remove file if possible
+    :param filename: file path
+    :param ignore_url: if True (default), it will not try to remove a file specified by an URL
+    :return:
+    """
+    if ignore_url and _url_pattern.match(filename):
+        return
+    try:
+        os.remove(filename)
+    except (OSError, FileNotFoundError):
+        pass
+
+
 def read_json_or_pkl(fn: str):
     if not (fn.endswith('.json') or fn.endswith('.pkl')) or not os.path.exists(fn):
         if fn.endswith('.json') or fn.endswith('.pkl'):
