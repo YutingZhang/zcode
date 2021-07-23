@@ -435,11 +435,12 @@ def robust_remove(filename: str, ignore_url: bool = True):
     :return:
     """
     if ignore_url and _url_pattern.match(filename):
-        return
+        return False
     try:
         os.remove(filename)
+        return True
     except (OSError, FileNotFoundError):
-        pass
+        return False
 
 
 def read_json_or_pkl(fn: str):

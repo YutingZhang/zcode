@@ -1,7 +1,8 @@
-from collections import Iterable
+import random
 import sys
 import os
 import io
+from typing import Generator, Iterable, Optional
 from recursive_utils.recursive_utils import *
 _ = recursive_apply
 
@@ -110,3 +111,38 @@ def order_preserving_unique(a):
             b.append(x)
             visited.add(x)
     return b
+
+
+def online_shuffle(a: Generator, window_size: int, random_generator: Optional[random.Random] = None):
+
+    if window_size == 0:
+        return a
+
+    shuffle = (
+        random_generator.shuffle if random_generator is not None
+        else random.shuffle
+    )
+
+    if window_size < 0:     # shuffle all together
+        a = list(a)
+        shuffle(a)
+        return a
+
+    window_randint = (
+        random_generator.randint if random_generator is not None
+        else random.randint
+    )
+    b = dict()
+    s = set(range(window_size))
+    for v in a:
+        i = s.pop()
+        b[i] = v
+        if not s:
+            j = window_randint(0, window_size)
+            s.add(j)
+            yield b.pop(j)
+
+    rest_values = list(b.values())
+    shuffle(rest_values)
+    for v in rest_values:
+        yield v
