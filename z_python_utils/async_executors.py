@@ -3,7 +3,6 @@ from concurrent import futures
 from threading import Lock, Thread
 from collections import deque
 from functools import partial, lru_cache
-import ctypes
 import time
 import tempfile
 import pickle
@@ -425,7 +424,7 @@ class HeartBeat:
         alive_lock.acquire()
         thread.start()
 
-    def stop(self):
+    def stop(self, finalized: bool = True):
         with type(self)._all_threads_lock:
             if id(self) not in type(self)._all_threads:
                 return
@@ -439,17 +438,19 @@ class HeartBeat:
         with running_lock:
             alive_lock.release()
         thread.join()
-        if self._final_callback is not None:
-            self._final_callback()
+        if finalized:
+            if self._final_callback is not None:
+                self._final_callback()
 
     def __enter__(self):
         self.start()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.stop()
+        finalized = exc_type is None
+        self.stop(finalized=finalized)
 
     def __del__(self):
-        self.stop()
+        self.stop(finalized=False)
 
 
 def main():
