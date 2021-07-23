@@ -128,6 +128,15 @@ def online_shuffle(a: Iterable, window_size: int, random_generator: Optional[ran
         shuffle(a)
         return a
 
+    return _online_shuffle(a, window_size, random_generator)
+
+
+def _online_shuffle(a: Iterable, window_size: int, random_generator: Optional[random.Random] = None):
+    assert window_size > 0, "window_size must be positive"
+    shuffle = (
+        random_generator.shuffle if random_generator is not None
+        else random.shuffle
+    )
     window_randint = (
         random_generator.randint if random_generator is not None
         else random.randint
