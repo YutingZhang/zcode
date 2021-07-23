@@ -2,7 +2,7 @@ import random
 import sys
 import os
 import io
-from typing import Generator, Iterable, Optional
+from typing import Iterable, Optional
 from recursive_utils.recursive_utils import *
 _ = recursive_apply
 
@@ -113,7 +113,7 @@ def order_preserving_unique(a):
     return b
 
 
-def online_shuffle(a: Generator, window_size: int, random_generator: Optional[random.Random] = None):
+def online_shuffle(a: Iterable, window_size: int, random_generator: Optional[random.Random] = None):
 
     if window_size == 0:
         return a
