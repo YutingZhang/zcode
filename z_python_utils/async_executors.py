@@ -516,13 +516,19 @@ class CrossProcessExecutor:
             else:
                 executor_type = globals()[executor_type]
         self._executor = executor_type(*args, **kwargs)
-        self._results_holder = ExecutorManager.ExecutorResultsHolder()
+        self._result_manager = ExecutorManager()
+        self._result_manager.start()
+        self._results_holder = self._result_manager.ExecutorResultsHolder()
 
     def submit(self, *args, **kwargs):
         r = self._executor.submit(*args, **kwargs)
         result_id = self._results_holder.add(r)
         rf = CrossProcessFuture(self._results_holder, result_id)
         return rf
+
+    def __del__(self):
+        self._executor.shutdown(wait=True)
+        self._result_manager.shutdown()
 
 
 ExecutorManager.register(
