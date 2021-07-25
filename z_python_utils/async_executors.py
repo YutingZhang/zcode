@@ -463,16 +463,47 @@ class _CrossProcessFutureNone:
 
 
 class CrossProcessFuture:
-    def __init__(self, executor, result_id: int):
-        self._executor: CrossProcessExecutor = executor
+    def __init__(self, results_holder, result_id: int):
+        self._results_holder: _CrossProcessResultsHolder = results_holder
         self._result_id = result_id
         self._result = _CrossProcessFutureNone()
 
     def result(self):
         if isinstance(self.result, _CrossProcessFutureNone):
-            self._result = self._executor.pop_result(self._result_id)
-            self._executor = None
+            self._result = self._results_holder.pop(self._result_id)
+            self._results_holder = None
         return self._result
+
+
+class _CrossProcessResultsHolder:
+    def __init__(self):
+        self._results_lock = threading.Lock()
+        self._results = dict()
+        self._available_result_index = set()
+
+    def add(self, r) -> int:
+        with self._results_lock:
+            if self._available_result_index:
+                result_id = self._available_result_index.pop()
+            else:
+                result_id = len(self._results)
+            self._results[result_id] = r
+        return result_id
+
+    def get(self, result_id: int):
+        with self._results_lock:
+            return self._results[result_id].result()
+
+    def remove(self, result_id: int):
+        with self._results_lock:
+            self._available_result_index.add(result_id)
+            self._results.pop(result_id)
+
+    def pop(self, result_id: int):
+        with self._results_lock:
+            self._available_result_index.add(result_id)
+            r = self._results.pop(result_id)
+        return r.result()
 
 
 class CrossProcessExecutor:
@@ -485,46 +516,24 @@ class CrossProcessExecutor:
             else:
                 executor_type = globals()[executor_type]
         self._executor = executor_type(*args, **kwargs)
-        self._results_lock = threading.Lock()
-        self._results = dict()
-        self._available_result_index = set()
-
-    def _add_result(self, r) -> int:
-        with self._results_lock:
-            if self._available_result_index:
-                result_id = self._available_result_index.pop()
-            else:
-                result_id = len(self._results)
-            self._results[result_id] = r
-        return result_id
-
-    def get_result(self, result_id: int):
-        with self._results_lock:
-            return self._results[result_id].result()
-
-    def remove_result(self, result_id: int):
-        with self._results_lock:
-            self._available_result_index.add(result_id)
-            self._results.pop(result_id)
-
-    def pop_result(self, result_id: int):
-        with self._results_lock:
-            self._available_result_index.add(result_id)
-            r = self._results.pop(result_id)
-        return r.result()
+        self._results_holder = ExecutorManager.ExecutorResultsHolder()
 
     def submit(self, *args, **kwargs):
         r = self._executor.submit(*args, **kwargs)
-        result_id = self._add_result(r)
-        rf = CrossProcessFuture(self, result_id)
+        result_id = self._results_holder.add(r)
+        rf = CrossProcessFuture(self._results_holder, result_id)
         return rf
 
 
-ExecutorManager.register("Future", CrossProcessFuture, exposed=['result'])
 ExecutorManager.register(
     "Executor", CrossProcessExecutor,
-    exposed=['submit', 'get_result', 'remove_result', 'pop_result']
+    exposed=['submit']
 )
+ExecutorManager.register(
+    "ExecutorResultsHolder", _CrossProcessResultsHolder,
+    exposed=['add', 'get', 'remove', 'pop']
+)
+
 
 
 def main():
