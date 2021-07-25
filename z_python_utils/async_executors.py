@@ -9,6 +9,7 @@ import pickle
 import os
 from shutil import rmtree
 import random
+import multiprocessing as mp
 
 
 class FileCachedFunctionJob:
@@ -453,8 +454,30 @@ class HeartBeat:
         self.stop(finalized=False)
 
 
+class ExecutorManager(mp.managers.BaseManager):
+    pass
 
 
+class CrossProcessFuture:
+    def __init__(self, future_obj, manager: ExecutorManager):
+        self._manger = manager
+        self._future_obj = future_obj
+
+    def result(self):
+        return self._future_obj.result()
+
+
+class CrossProcessExecutor:
+    def __init__(self, executor, manager: ExecutorManager):
+        self._manager = manager
+        self._executor = executor
+
+    def submit(self, *args, **kwargs):
+        r = self._executor(*args, **kwargs)
+
+
+ExecutorManager.register("Future", CrossProcessFuture, exposed=['result'])
+ExecutorManager.register("Executor", CrossProcessExecutor, exposed=['submit'])
 
 
 def main():
