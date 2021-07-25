@@ -474,6 +474,10 @@ class CrossProcessFuture:
             self._results_holder = None
         return self._result
 
+    def __del__(self):
+        if isinstance(self.result, _CrossProcessFutureNone):
+            self._results_holder.remove(self._result_id)
+
 
 class _CrossProcessResultsHolder:
     def __init__(self):
