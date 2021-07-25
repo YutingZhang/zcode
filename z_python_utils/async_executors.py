@@ -1,6 +1,6 @@
 from typing import Union, Callable, Optional
 from concurrent import futures
-from threading import Lock, Thread
+import threading
 from collections import deque
 from functools import partial, lru_cache
 import time
@@ -44,7 +44,7 @@ class WorkerExecutor:
         self._use_thread_pool = use_thread_pool
         self._executor = None
         self._results = deque()
-        self._lock = Lock()
+        self._lock = threading.Lock()
         self._pickle_to_file = False if use_thread_pool else pickle_to_file
 
     def join(
@@ -262,7 +262,7 @@ class ProcessPoolExecutorWithProgressBar:
 class DetachableExecutorWrapper:
     """
     the executor wrapped can be deleted before joining the executor
-    a guard thread will take care of the joining in the background
+    a guard threading.Thread will take care of the joining in the background
     """
 
     def __init__(self, executor, join_func_name: str = 'join'):
@@ -282,19 +282,19 @@ class DetachableExecutorWrapper:
 class _DetachableExecutorWrapperAux:
 
     guard_instance = None
-    guard_instance_lock = Lock()
+    guard_instance_lock = threading.Lock()
 
     garbage_executor_pool = dict()
-    garbage_executor_pool_lock = Lock()
-    garbage_executor_collection_lock = Lock()
+    garbage_executor_pool_lock = threading.Lock()
+    garbage_executor_collection_lock = threading.Lock()
 
     active = False
-    active_gc_loop_lock = Lock()
+    active_gc_loop_lock = threading.Lock()
     first_cycle_ready = False
 
     def __init__(self):
         with type(self).active_gc_loop_lock:
-            self._thread = Thread(
+            self._thread = threading.Thread(
                 target=type(self)._garbage_collection_loop
             )
             self._thread.start()
@@ -353,9 +353,9 @@ class _DetachableExecutorWrapperAux:
 
 
 def async_detechable_thread_call(*args, **kwargs):
-    thread = Thread(target=args[0], args=args[1:], kwargs=kwargs)
-    thread.start()
-    _ = DetachableExecutorWrapper(thread, join_func_name='join')
+    threading.Thread = threading.Thread(target=args[0], args=args[1:], kwargs=kwargs)
+    threading.Thread.start()
+    _ = DetachableExecutorWrapper(threading.Thread, join_func_name='join')
 
 
 class CachedExecutorWrapper:
@@ -370,7 +370,7 @@ class CachedExecutorWrapper:
             self._cached_submit = lru_cache(maxsize=self._cache_size)(executor.submit)
         else:
             self._cached_submit = self._async_run_plain
-        self._cached_submit_lock = Lock()
+        self._cached_submit_lock = threading.Lock()
 
     def __getattr__(self, item):
         if hasattr(self._executor, item):
@@ -382,7 +382,7 @@ class CachedExecutorWrapper:
             return self._cached_submit(*args, **kwargs)
 
 
-def _heart_beat(interval: float, callback: Callable, running_lock: Lock, alive_lock: Lock):
+def _heart_beat(interval: float, callback: Callable, running_lock: threading.Lock, alive_lock: threading.Lock):
     is_first_iter = True
     while True:
         with running_lock:
@@ -399,7 +399,7 @@ def _heart_beat(interval: float, callback: Callable, running_lock: Lock, alive_l
 class HeartBeat:
 
     _all_threads = dict()
-    _all_threads_lock = Lock()
+    _all_threads_lock = threading.Lock()
 
     def __init__(self, interval: float, callback: Callable, final_callback: Optional[Callable] = None):
         self._interval = interval   # in sec
@@ -410,19 +410,19 @@ class HeartBeat:
         with type(self)._all_threads_lock:
             if id(self) in type(self)._all_threads:
                 return
-        running_lock = Lock()
-        alive_lock = Lock()
+        running_lock = threading.Lock()
+        alive_lock = threading.Lock()
         thread_dict = dict(
             running_lock=running_lock, alive_lock=alive_lock
         )
-        thread = Thread(target=_heart_beat, args=(self._interval, self._callback), kwargs=dict(thread_dict))
-        thread_dict["thread"] = thread
+        threading.Thread = threading.Thread(target=_heart_beat, args=(self._interval, self._callback), kwargs=dict(thread_dict))
+        thread_dict["threading.Thread"] = threading.Thread
         with type(self)._all_threads_lock:
             if id(self) in type(self)._all_threads:
                 return
             type(self)._all_threads[id(self)] = thread_dict
         alive_lock.acquire()
-        thread.start()
+        threading.Thread.start()
 
     def stop(self, finalized: bool = True):
         with type(self)._all_threads_lock:
@@ -431,13 +431,13 @@ class HeartBeat:
             thread_dict = type(self)._all_threads.pop(id(self))
         running_lock = thread_dict["running_lock"]
         alive_lock = thread_dict["alive_lock"]
-        thread = thread_dict["thread"]
+        threading.Thread = thread_dict["threading.Thread"]
         del thread_dict
-        alive_lock: Lock
-        thread: Thread
+        alive_lock: threading.Lock
+        threading.Thread: threading.Thread
         with running_lock:
             alive_lock.release()
-        thread.join()
+        threading.Thread.join()
         if finalized:
             if self._final_callback is not None:
                 self._final_callback()
@@ -451,6 +451,10 @@ class HeartBeat:
 
     def __del__(self):
         self.stop(finalized=False)
+
+
+
+
 
 
 def main():
