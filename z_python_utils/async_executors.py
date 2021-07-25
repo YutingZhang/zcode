@@ -1,4 +1,4 @@
-from typing import Union, Callable, Optional
+from typing import Union, Callable, Optional, Type
 from concurrent import futures
 import threading
 from collections import deque
@@ -9,7 +9,7 @@ import pickle
 import os
 from shutil import rmtree
 import random
-import multiprocessing as mp
+import multiprocessing.managers as mpm
 
 
 class FileCachedFunctionJob:
@@ -454,30 +454,77 @@ class HeartBeat:
         self.stop(finalized=False)
 
 
-class ExecutorManager(mp.managers.BaseManager):
+class ExecutorManager(mpm.BaseManager):
+    pass
+
+
+class _CrossProcessFutureNone:
     pass
 
 
 class CrossProcessFuture:
-    def __init__(self, future_obj, manager: ExecutorManager):
-        self._manger = manager
-        self._future_obj = future_obj
+    def __init__(self, executor, result_id: int):
+        self._executor: CrossProcessExecutor = executor
+        self._result_id = result_id
+        self._result = _CrossProcessFutureNone()
 
     def result(self):
-        return self._future_obj.result()
+        if isinstance(self.result, _CrossProcessFutureNone):
+            self._result = self._executor.pop_result(self._result_id)
+            self._executor = None
+        return self._result
 
 
 class CrossProcessExecutor:
-    def __init__(self, executor, manager: ExecutorManager):
-        self._manager = manager
-        self._executor = executor
+    def __init__(self, executor_type: Union[Type, Callable, str], *args, **kwargs):
+        if isinstance(executor_type, str):
+            if executor_type == "ProcessPoolExecutor":
+                executor_type = futures.ProcessPoolExecutor
+            elif executor_type == "ThreadPoolExecutor":
+                executor_type = futures.ThreadPoolExecutor
+            else:
+                executor_type = globals()[executor_type]
+        self._executor = executor_type(*args, **kwargs)
+        self._results_lock = threading.Lock()
+        self._results = dict()
+        self._available_result_index = set()
+
+    def _add_result(self, r) -> int:
+        with self._results_lock:
+            if self._available_result_index:
+                result_id = self._available_result_index.pop()
+            else:
+                result_id = len(self._results)
+            self._results[result_id] = r
+        return result_id
+
+    def get_result(self, result_id: int):
+        with self._results_lock:
+            return self._results[result_id].result()
+
+    def remove_result(self, result_id: int):
+        with self._results_lock:
+            self._available_result_index.add(result_id)
+            self._results.pop(result_id)
+
+    def pop_result(self, result_id: int):
+        with self._results_lock:
+            self._available_result_index.add(result_id)
+            r = self._results.pop(result_id)
+        return r.result()
 
     def submit(self, *args, **kwargs):
-        r = self._executor(*args, **kwargs)
+        r = self._executor.submit(*args, **kwargs)
+        result_id = self._add_result(r)
+        rf = CrossProcessFuture(self, result_id)
+        return rf
 
 
 ExecutorManager.register("Future", CrossProcessFuture, exposed=['result'])
-ExecutorManager.register("Executor", CrossProcessExecutor, exposed=['submit'])
+ExecutorManager.register(
+    "Executor", CrossProcessExecutor,
+    exposed=['submit', 'get_result', 'remove_result', 'pop_result']
+)
 
 
 def main():
