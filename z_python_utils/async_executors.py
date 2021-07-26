@@ -594,6 +594,7 @@ class _MCPPoolExecutorManagerPool:
         with self._d_lock:
             my_pid = os.getpid()
             if self._pid != my_pid:
+                self._pid = my_pid
                 self._d = dict()
             return self._d
 
@@ -619,6 +620,7 @@ class ManagedCrossProcessPoolExecutor:
     manager_pool = _MCPPoolExecutorManagerPool()
 
     def __init__(self, executor_type: Union[Type, Callable, str], *args, **kwargs):
+        self._pid = os.getpid()
         self._manager_id = self.manager_pool.create_manager()
         manager = self.manager_pool.get_manager(self._manager_id)
         self._executor: CrossProcessPoolExecutor = manager.Executor(executor_type, *args, **kwargs)
@@ -631,7 +633,8 @@ class ManagedCrossProcessPoolExecutor:
     def __del__(self):
         self.submit = None
         self._executor = None
-        self.manager_pool.release_manager(self._manager_id)
+        if self._pid == os.getpid():
+            self.manager_pool.release_manager(self._manager_id)
 
 
 MCPPoolExecutor = ManagedCrossProcessPoolExecutor
