@@ -565,12 +565,12 @@ ExecutorBaseManager.register(
     exposed=['submit']
 )
 ExecutorBaseManager.register(
-    "ExecutorResultsHolder", _CrossProcessResultsHolder,
+    "ExecutorResultFuture", CrossProcessFuture,
     exposed=['result']
 )
 ExecutorBaseManager.register(
-    "ExecutorResultFuture", _CrossProcessResultsHolder,
-    exposed=['add', 'get', 'remove', 'pop']
+    "ExecutorResultsHolder", _CrossProcessResultsHolder,
+    exposed=['add', 'get', 'remove', 'pop', 'flush_all_results']
 )
 
 
