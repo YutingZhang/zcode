@@ -1,5 +1,6 @@
 __all__ = [
-    'ZipFileStorage'
+    'ZipFileStorage',
+    'PickledBytes',
 ]
 
 import zipfile
@@ -9,6 +10,10 @@ import pickle
 from typing import Iterable, Optional, Callable, Any, Dict
 from functools import partial
 from z_python_utils.classes import SizedWrapperOfIterable
+
+
+class PickledBytes(bytes):
+    pass
 
 
 class ZipFileStorage:
@@ -171,6 +176,9 @@ def serialize_and_add_to_zip_queue(
     elif isinstance(value, str):
         ext = ".str.txt"
         s = value.encode(encoding='UTF-8')
+    elif isinstance(value, PickledBytes):
+        ext = ".pkl"
+        s = value
     elif isinstance(value, bytes):
         ext = ".bytes"
         s = value
@@ -182,8 +190,9 @@ def serialize_and_add_to_zip_queue(
     zipfile_executor.submit(add_to_zip, key, ext, s, zf, cache, cache_access_lock, zip_lock)
 
 
-def add_to_zip\
-                (key, ext: str, s, zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock, zip_lock: Lock):
+def add_to_zip(
+        key, ext: str, s, zf: zipfile.ZipFile, cache: dict, cache_access_lock: Lock, zip_lock: Lock
+):
     with zip_lock:
         zf.writestr(str(key) + ext, s)
     with cache_access_lock:
