@@ -11,6 +11,7 @@ import os
 from shutil import rmtree
 import random
 import multiprocessing.managers as mpm
+from z_python_utils.classes import ObjectPool
 
 
 class FileCachedFunctionJob:
@@ -585,42 +586,9 @@ class ExecutorManager(ExecutorBaseManager):
         self.shutdown()
 
 
-class _MCPPoolExecutorManagerPool:
-    def __init__(self):
-        self._d = None
-        self._d_lock = threading.Lock()
-        self._pid = -1
-        self._lock = threading.Lock()
-
-    @property
-    def d(self):
-        with self._d_lock:
-            my_pid = os.getpid()
-            if self._pid != my_pid:
-                self._pid = my_pid
-                self._d = dict()
-            return self._d
-
-    def create_manager(self):
-        with self._lock:
-            manager_id = uuid.uuid4()
-            while manager_id in self.d:
-                manager_id = uuid.uuid4()
-            self.d[manager_id] = ExecutorManager()
-            return manager_id
-
-    def release_manager(self, manager_id):
-        with self._lock:
-            self.d.pop(manager_id)
-
-    def get_manager(self, manager_id):
-        with self._lock:
-            return self.d[manager_id]
-
-
 class ManagedCrossProcessPoolExecutor:
 
-    manager_pool = _MCPPoolExecutorManagerPool()
+    manager_pool = ObjectPool(ExecutorManager)
 
     def __init__(self, executor_type: Union[Type, Callable, str], *args, **kwargs):
         self._pid = os.getpid()

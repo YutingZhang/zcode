@@ -1,6 +1,8 @@
 import inspect
 from inspect import isfunction, ismethod
-from typing import List, Iterable, Optional
+from typing import List, Iterable, Optional, Callable, Any
+import threading
+import uuid
 import random
 import os
 import sys
@@ -27,6 +29,7 @@ __all__ = [
     'SizedWrapperOfIterable',
     'get_class_fullname',
     'load_obj_from_file',
+    'ObjectPool',
 ]
 
 
@@ -386,6 +389,41 @@ class SizedWrapperOfIterable:
         return iter(self._obj)
 
 
+class ObjectPool:
+
+    def __init__(self, factory_func: Callable[[], Any]):
+        self._d = None
+        self._d_lock = threading.Lock()
+        self._pid = -1
+        self._lock = threading.Lock()
+        self._factory_func = factory_func
+
+    @property
+    def d(self):
+        with self._d_lock:
+            my_pid = os.getpid()
+            if self._pid != my_pid:
+                self._pid = my_pid
+                self._d = dict()
+            return self._d
+
+    def create(self):
+        with self._lock:
+            object_id = uuid.uuid4()
+            while object_id in self.d:
+                object_id = uuid.uuid4()
+            self.d[object_id] = self._factory_func()
+            return object_id
+
+    def release(self, object_id):
+        with self._lock:
+            self.d.pop(object_id)
+
+    def get(self, object_id):
+        with self._lock:
+            return self.d[object_id]
+
+
 def get_class_fullname(a, use_filename_for_main: bool = False):
     if not inspect.isclass(a):
         a = type(a)
@@ -427,3 +465,5 @@ def load_obj_from_file(obj_spec: str, package_dirs: Optional[List[str]] = None):
     mod = importlib.import_module(module_name)
     obj = getattr(mod, obj_name)
     return obj
+
+
