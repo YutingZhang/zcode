@@ -590,6 +590,8 @@ class CrossProcessPoolExecutor:
         self._results_holder_id = self.result_holder_pool.add(_CrossProcessResultsHolder())
         self.__results_holder_remote: Optional[_CrossProcessResultsHolderRemote] = None
         self._lock = threading.Lock()
+        self._result_manager = ExecutorManager()
+        # self._result_manager.start()
 
     @property
     def _results_holder(self) -> _CrossProcessResultsHolder:
@@ -622,6 +624,7 @@ class CrossProcessPoolExecutor:
 
     def __del__(self):
         self.shutdown()
+        # self._result_manager.shutdown()
         self.result_holder_pool.pop(self._results_holder_id)
 
 
