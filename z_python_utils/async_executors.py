@@ -538,19 +538,22 @@ class CrossProcessPoolExecutor:
         self._result_manager = ExecutorBaseManager()
         self._result_manager.start()
         self._results_holder: _CrossProcessResultsHolder = self._result_manager.ExecutorResultsHolder()
+        self._lock = threading.Lock()
 
     def submit(self, *args, **kwargs):
-        r = self._executor.submit(*args, **kwargs)
-        result_id = self._results_holder.add(r)
-        rf = self._result_manager.ExecutorResultFuture(self._results_holder, result_id)
-        self._results_holder.set_future(result_id, rf)
+        with self._lock:
+            r = self._executor.submit(*args, **kwargs)
+            result_id = self._results_holder.add(r)
+            rf = self._result_manager.ExecutorResultFuture(self._results_holder, result_id)
+            self._results_holder.set_future(result_id, rf)
         return rf
 
     def shutdown(self, wait: bool = True):
-        self._executor.shutdown(wait=wait)
-        if wait:
-            self._results_holder.flush_all_results()
-            self._results_holder = None
+        with self._lock:
+            self._executor.shutdown(wait=wait)
+            if wait:
+                self._results_holder.flush_all_results()
+                self._results_holder = None
 
     def __del__(self):
         self.shutdown()
