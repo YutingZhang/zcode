@@ -1,3 +1,4 @@
+import uuid
 from typing import Union, Callable, Optional, Type
 from concurrent import futures
 import threading
@@ -581,17 +582,56 @@ class ExecutorManager(ExecutorBaseManager):
         self.shutdown()
 
 
+class _MCPPoolExecutorManagerPool:
+    def __init__(self):
+        self._d = None
+        self._d_lock = threading.Lock()
+        self._pid = -1
+        self._lock = threading.Lock()
+
+    @property
+    def d(self):
+        with self._d_lock:
+            my_pid = os.getpid()
+            if self._pid != my_pid:
+                self._d = dict()
+            return self._d
+
+    def create_manager(self):
+        with self._lock:
+            manager_id = uuid.uuid4()
+            while manager_id in self._d:
+                manager_id = uuid.uuid4()
+            self.d[manager_id] = ExecutorManager()
+            return manager_id
+
+    def release_manager(self, manager_id):
+        with self._lock:
+            self.d.pop(manager_id)
+
+    def get_manager(self, manager_id):
+        with self._lock:
+            return self.d[manager_id]
+
+
 class ManagedCrossProcessPoolExecutor:
+
+    manager_pool = _MCPPoolExecutorManagerPool()
+
     def __init__(self, executor_type: Union[Type, Callable, str], *args, **kwargs):
-        self._manager = ExecutorManager()
-        print(executor_type, args, kwargs)
-        self._executor: CrossProcessPoolExecutor = self._manager.Executor(executor_type, *args, **kwargs)
+        self._manager_id = self.manager_pool.create_manager()
+        manager = self.manager_pool.get_manager(self._manager_id)
+        self._executor: CrossProcessPoolExecutor = manager.Executor(executor_type, *args, **kwargs)
         self.submit = self._executor.submit
+
+    @property
+    def executor(self) -> CrossProcessPoolExecutor:
+        return self._executor
 
     def __del__(self):
         self.submit = None
         self._executor = None
-        self._manager = None
+        self.manager_pool.release_manager(self._manager_id)
 
 
 MCPPoolExecutor = ManagedCrossProcessPoolExecutor
