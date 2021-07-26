@@ -600,7 +600,7 @@ class _MCPPoolExecutorManagerPool:
     def create_manager(self):
         with self._lock:
             manager_id = uuid.uuid4()
-            while manager_id in self._d:
+            while manager_id in self.d:
                 manager_id = uuid.uuid4()
             self.d[manager_id] = ExecutorManager()
             return manager_id
