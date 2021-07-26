@@ -391,12 +391,11 @@ class SizedWrapperOfIterable:
 
 class ObjectPool:
 
-    def __init__(self, factory_func: Callable[[], Any]):
+    def __init__(self):
         self._d = None
         self._d_lock = threading.Lock()
         self._pid = -1
         self._lock = threading.Lock()
-        self._factory_func = factory_func
 
     @property
     def d(self):
@@ -407,17 +406,17 @@ class ObjectPool:
                 self._d = dict()
             return self._d
 
-    def create(self):
+    def add(self, obj):
         with self._lock:
             object_id = uuid.uuid4()
             while object_id in self.d:
                 object_id = uuid.uuid4()
-            self.d[object_id] = self._factory_func()
+            self.d[object_id] = obj
             return object_id
 
-    def release(self, object_id):
+    def pop(self, object_id):
         with self._lock:
-            self.d.pop(object_id)
+            return self.d.pop(object_id)
 
     def get(self, object_id):
         with self._lock:
