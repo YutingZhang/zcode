@@ -14,6 +14,39 @@ import multiprocessing.managers as mpm
 from z_python_utils.classes import ObjectPool
 
 
+# FIXME: this is a money patch
+
+def mpm_AutoProxy(token, serializer, manager=None, authkey=None,
+              exposed=None, incref=True, manager_owned=False):
+    '''
+    Return an auto-proxy for `token`
+    '''
+    _Client = mpm.listener_client[serializer][1]
+
+    if exposed is None:
+        conn = _Client(token.address, authkey=authkey)
+        try:
+            exposed = mpm.dispatch(conn, None, 'get_methods', (token,))
+        finally:
+            conn.close()
+
+    if authkey is None and manager is not None:
+        authkey = manager._authkey
+    if authkey is None:
+        authkey = mpm.process.current_process().authkey
+
+    ProxyType = mpm.MakeProxyType('AutoProxy[%s]' % token.typeid, exposed)
+    proxy = ProxyType(token, serializer, manager=manager, authkey=authkey,
+                      incref=incref, manager_owned=manager_owned)
+    proxy._isauto = True
+    return proxy
+
+
+mpm.AutoProxy = mpm_AutoProxy
+
+
+# -----------------------------
+
 class FileCachedFunctionJob:
 
     def __init__(self, *args, **kwargs):
@@ -462,7 +495,7 @@ class ExecutorBaseManager(mpm.BaseManager):
 
 class CrossProcessFuture:
     def __init__(self, results_holder, result_id: int):
-        self._results_holder: _CrossProcessResultsHolder = results_holder
+        self._results_holder: _CrossProcessResultsHolderRemote = results_holder
         self._result_id = result_id
         self._result = None
         self._lock = threading.Lock()
@@ -526,7 +559,25 @@ class _CrossProcessResultsHolder:
             self._results.clear()
 
 
+class _CrossProcessResultsHolderRemote:
+    def __init__(self, results_holder_id):
+        self._results_holder_id = results_holder_id
+
+    @property
+    def results_holder(self) -> _CrossProcessResultsHolder:
+        return CrossProcessPoolExecutor.result_holder_pool.get(self._results_holder_id)
+
+    def remove(self, result_id: int):
+        return self.results_holder.remove(result_id)
+
+    def pop(self, result_id: int):
+        return self.results_holder.pop(result_id)
+
+
 class CrossProcessPoolExecutor:
+
+    result_holder_pool = ObjectPool()
+
     def __init__(self, executor_type: Union[Type, Callable, str], *args, **kwargs):
         if isinstance(executor_type, str):
             if executor_type == "ProcessPoolExecutor":
@@ -536,16 +587,30 @@ class CrossProcessPoolExecutor:
             else:
                 executor_type = globals()[executor_type]
         self._executor = executor_type(*args, **kwargs)
-        self._result_manager = ExecutorBaseManager()
-        self._result_manager.start()
-        self._results_holder: _CrossProcessResultsHolder = self._result_manager.ExecutorResultsHolder()
+        self._results_holder_id = self.result_holder_pool.add(_CrossProcessResultsHolder())
+        self.__results_holder_remote: Optional[_CrossProcessResultsHolderRemote] = None
         self._lock = threading.Lock()
+
+    @property
+    def _results_holder(self) -> _CrossProcessResultsHolder:
+        return self.result_holder_pool.get(self._results_holder_id)
+
+    def get_results_holder_id(self):
+        return self._results_holder_id
+
+    def set_results_holder_remote(self, results_holder_remote: _CrossProcessResultsHolderRemote):
+        self.__results_holder_remote = results_holder_remote
+
+    @property
+    def _results_holder_remote(self) -> _CrossProcessResultsHolderRemote:
+        assert self.__results_holder_remote is not None, "result_holder_remote has not been set up"
+        return self.__results_holder_remote
 
     def submit(self, *args, **kwargs):
         with self._lock:
             r = self._executor.submit(*args, **kwargs)
-            result_id = self._results_holder.add(r)
-            rf = self._result_manager.ExecutorResultFuture(self._results_holder, result_id)
+            result_id = self._results_holder.add(r)   # TODO: interact with the real result holder
+            rf = self._result_manager.ExecutorResultFuture(self._results_holder_remote, result_id)
             self._results_holder.set_future(result_id, rf)
         return rf
 
@@ -554,24 +619,23 @@ class CrossProcessPoolExecutor:
             self._executor.shutdown(wait=wait)
             if wait:
                 self._results_holder.flush_all_results()
-                self._results_holder = None
 
     def __del__(self):
         self.shutdown()
-        self._result_manager.shutdown()
+        self.result_holder_pool.pop(self._results_holder_id)
 
 
 ExecutorBaseManager.register(
     "Executor", CrossProcessPoolExecutor,
-    exposed=['submit']
+    exposed=['submit', 'get_results_holder_id', 'set_results_holder_remote']
 )
 ExecutorBaseManager.register(
     "ExecutorResultFuture", CrossProcessFuture,
     exposed=['result']
 )
 ExecutorBaseManager.register(
-    "ExecutorResultsHolder", _CrossProcessResultsHolder,
-    exposed=['add', 'get', 'remove', 'pop', 'flush_all_results']
+    "ExecutorResultsHolderRemote", _CrossProcessResultsHolderRemote,
+    exposed=['remove', 'pop']
 )
 
 
@@ -593,9 +657,19 @@ class ManagedCrossProcessPoolExecutor:
     def __init__(self, executor_type: Union[Type, Callable, str], *args, **kwargs):
         self._pid = os.getpid()
         self._manager_id = self.manager_pool.add(ExecutorManager())
-        manager = self.manager_pool.get(self._manager_id)
-        self._executor: CrossProcessPoolExecutor = manager.Executor(executor_type, *args, **kwargs)
+        self._executor: CrossProcessPoolExecutor = self.manager.Executor(executor_type, *args, **kwargs)
+        results_holder_id = self.executor.get_results_holder_id()
+        print("I0")
+        results_holder_remote = self.manager.ExecutorResultsHolderRemote(results_holder_id)
+        print("I1")
+        self.executor.set_results_holder_remote(results_holder_remote)
+        print("I2")
         self.submit = self._executor.submit
+        print("I3")
+
+    @property
+    def manager(self) -> ExecutorManager:
+        return self.manager_pool.get(self._manager_id)
 
     @property
     def executor(self) -> CrossProcessPoolExecutor:
