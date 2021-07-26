@@ -147,7 +147,8 @@ class ZipFileStorage:
         with self._cache_access_lock:
             all_results = [r for _, r in self._cache.values()]
         for r in all_results:
-            r.result()
+            if r is not None:
+                r.result()
 
     def close(self):
         if self._is_closed:
