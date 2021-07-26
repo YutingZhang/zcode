@@ -662,13 +662,9 @@ class ManagedCrossProcessPoolExecutor:
         self._manager_id = self.manager_pool.add(ExecutorManager())
         self._executor: CrossProcessPoolExecutor = self.manager.Executor(executor_type, *args, **kwargs)
         results_holder_id = self.executor.get_results_holder_id()
-        print("I0")
         results_holder_remote = self.manager.ExecutorResultsHolderRemote(results_holder_id)
-        print("I1")
         self.executor.set_results_holder_remote(results_holder_remote)
-        print("I2")
         self.submit = self._executor.submit
-        print("I3")
 
     @property
     def manager(self) -> ExecutorManager:
