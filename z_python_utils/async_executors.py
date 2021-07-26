@@ -576,12 +576,15 @@ class ExecutorManager(ExecutorBaseManager):
         self.start()
 
     def __del__(self):
+        if hasattr(ExecutorBaseManager, "__del__"):
+            getattr(ExecutorBaseManager, "__del__")(self)
         self.shutdown()
 
 
 class ManagedCrossProcessExecutor:
     def __init__(self, executor_type: Union[Type, Callable, str], *args, **kwargs):
         self._manager = ExecutorManager()
+        print(executor_type, args, kwargs)
         self._executor: CrossProcessExecutor = self._manager.Executor(executor_type, *args, **kwargs)
         self.submit = self._executor.submit
 
@@ -591,7 +594,7 @@ class ManagedCrossProcessExecutor:
         self._manager = None
 
 
-StandardManagedCrossProcessExecutor = partial(ManagedCrossProcessExecutor, "ProcessExecutor")
+StandardManagedCrossProcessExecutor = partial(ManagedCrossProcessExecutor, "ProcessPoolExecutor")
 
 
 def main():
