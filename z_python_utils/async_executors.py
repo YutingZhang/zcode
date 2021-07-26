@@ -524,7 +524,7 @@ class _CrossProcessResultsHolder:
             self._results.clear()
 
 
-class CrossProcessExecutor:
+class CrossProcessPoolExecutor:
     def __init__(self, executor_type: Union[Type, Callable, str], *args, **kwargs):
         if isinstance(executor_type, str):
             if executor_type == "ProcessPoolExecutor":
@@ -557,7 +557,7 @@ class CrossProcessExecutor:
 
 
 ExecutorBaseManager.register(
-    "Executor", CrossProcessExecutor,
+    "Executor", CrossProcessPoolExecutor,
     exposed=['submit']
 )
 ExecutorBaseManager.register(
@@ -581,11 +581,11 @@ class ExecutorManager(ExecutorBaseManager):
         self.shutdown()
 
 
-class ManagedCrossProcessExecutor:
+class ManagedCrossProcessPoolExecutor:
     def __init__(self, executor_type: Union[Type, Callable, str], *args, **kwargs):
         self._manager = ExecutorManager()
         print(executor_type, args, kwargs)
-        self._executor: CrossProcessExecutor = self._manager.Executor(executor_type, *args, **kwargs)
+        self._executor: CrossProcessPoolExecutor = self._manager.Executor(executor_type, *args, **kwargs)
         self.submit = self._executor.submit
 
     def __del__(self):
@@ -594,7 +594,9 @@ class ManagedCrossProcessExecutor:
         self._manager = None
 
 
-StandardManagedCrossProcessExecutor = partial(ManagedCrossProcessExecutor, "ProcessPoolExecutor")
+MCPPoolExecutor = ManagedCrossProcessPoolExecutor
+MCPProcessPoolExecutor = partial(ManagedCrossProcessPoolExecutor, "ProcessPoolExecutor")
+MCPThreadPoolExecutor = partial(ManagedCrossProcessPoolExecutor, "ThreadPoolExecutor")
 
 
 def main():
