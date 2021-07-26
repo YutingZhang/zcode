@@ -454,11 +454,7 @@ class HeartBeat:
         self.stop(finalized=False)
 
 
-class ExecutorManager(mpm.BaseManager):
-    pass
-
-
-class _CrossProcessFutureNone:
+class ExecutorBaseManager(mpm.BaseManager):
     pass
 
 
@@ -466,17 +462,23 @@ class CrossProcessFuture:
     def __init__(self, results_holder, result_id: int):
         self._results_holder: _CrossProcessResultsHolder = results_holder
         self._result_id = result_id
-        self._result = _CrossProcessFutureNone()
+        self._result = None
+        self._lock = threading.Lock()
 
     def result(self):
-        if isinstance(self.result, _CrossProcessFutureNone):
-            self._result = self._results_holder.pop(self._result_id)
-            self._results_holder = None
+        if self._results_holder is not None:
+            self.set_result(self._results_holder.pop(self._result_id))
         return self._result
 
+    def set_result(self, r):
+        with self._lock:
+            self._result = r
+            self._results_holder = None
+
     def __del__(self):
-        if isinstance(self.result, _CrossProcessFutureNone):
-            self._results_holder.remove(self._result_id)
+        with self._lock:
+            if self._results_holder is not None:
+                self._results_holder.remove(self._result_id)
 
 
 class _CrossProcessResultsHolder:
@@ -491,12 +493,15 @@ class _CrossProcessResultsHolder:
                 result_id = self._available_result_index.pop()
             else:
                 result_id = len(self._results)
-            self._results[result_id] = r
+            self._results[result_id] = [r, None]
         return result_id
+
+    def set_future(self, result_id: int, future_obj: CrossProcessFuture):
+        self._results[result_id][1] = future_obj
 
     def get(self, result_id: int):
         with self._results_lock:
-            return self._results[result_id].result()
+            return self._results[result_id][0].result()
 
     def remove(self, result_id: int):
         with self._results_lock:
@@ -507,7 +512,16 @@ class _CrossProcessResultsHolder:
         with self._results_lock:
             self._available_result_index.add(result_id)
             r = self._results.pop(result_id)
-        return r.result()
+            return r[0].result()
+
+    def flush_all_results(self):
+        with self._results_lock:
+            future_obj: Union[None, CrossProcessFuture]
+            for r, future_obj in self._results.values():
+                if future_obj is None:
+                    continue
+                future_obj.set_result(r.result())
+            self._results.clear()
 
 
 class CrossProcessExecutor:
@@ -520,29 +534,64 @@ class CrossProcessExecutor:
             else:
                 executor_type = globals()[executor_type]
         self._executor = executor_type(*args, **kwargs)
-        self._result_manager = ExecutorManager()
+        self._result_manager = ExecutorBaseManager()
         self._result_manager.start()
-        self._results_holder = self._result_manager.ExecutorResultsHolder()
+        self._results_holder: _CrossProcessResultsHolder = self._result_manager.ExecutorResultsHolder()
 
     def submit(self, *args, **kwargs):
         r = self._executor.submit(*args, **kwargs)
         result_id = self._results_holder.add(r)
-        rf = CrossProcessFuture(self._results_holder, result_id)
+        rf = self._result_manager.ExecutorResultFuture(self._results_holder, result_id)
+        self._results_holder.set_future(result_id, rf)
         return rf
 
+    def shutdown(self, wait: bool = True):
+        self._executor.shutdown(wait=wait)
+        if wait:
+            self._results_holder.flush_all_results()
+            self._results_holder = None
+
     def __del__(self):
-        self._executor.shutdown(wait=True)
+        self.shutdown()
         self._result_manager.shutdown()
 
 
-ExecutorManager.register(
+ExecutorBaseManager.register(
     "Executor", CrossProcessExecutor,
     exposed=['submit']
 )
-ExecutorManager.register(
+ExecutorBaseManager.register(
     "ExecutorResultsHolder", _CrossProcessResultsHolder,
+    exposed=['result']
+)
+ExecutorBaseManager.register(
+    "ExecutorResultFuture", _CrossProcessResultsHolder,
     exposed=['add', 'get', 'remove', 'pop']
 )
+
+
+class ExecutorManager(ExecutorBaseManager):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.start()
+
+    def __del__(self):
+        self.shutdown()
+
+
+class ManagedCrossProcessExecutor:
+    def __init__(self, executor_type: Union[Type, Callable, str], *args, **kwargs):
+        self._manager = ExecutorManager()
+        self._executor: CrossProcessExecutor = self._manager.Executor(executor_type, *args, **kwargs)
+        self.submit = self._executor.submit
+
+    def __del__(self):
+        self.submit = None
+        self._executor = None
+        self._manager = None
+
+
+StandardManagedCrossProcessExecutor = partial(ManagedCrossProcessExecutor, "ProcessExecutor")
 
 
 def main():
