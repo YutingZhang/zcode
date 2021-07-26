@@ -298,7 +298,7 @@ class ProcessPoolExecutorWithProgressBar:
 class DetachableExecutorWrapper:
     """
     the executor wrapped can be deleted before joining the executor
-    a guard threading.Thread will take care of the joining in the background
+    a guard thread will take care of the joining in the background
     """
 
     def __init__(self, executor, join_func_name: str = 'join'):
@@ -389,9 +389,9 @@ class _DetachableExecutorWrapperAux:
 
 
 def async_detechable_thread_call(*args, **kwargs):
-    threading.Thread = threading.Thread(target=args[0], args=args[1:], kwargs=kwargs)
-    threading.Thread.start()
-    _ = DetachableExecutorWrapper(threading.Thread, join_func_name='join')
+    thread = threading.Thread(target=args[0], args=args[1:], kwargs=kwargs)
+    thread.start()
+    _ = DetachableExecutorWrapper(thread, join_func_name='join')
 
 
 class CachedExecutorWrapper:
@@ -451,14 +451,14 @@ class HeartBeat:
         thread_dict = dict(
             running_lock=running_lock, alive_lock=alive_lock
         )
-        threading.Thread = threading.Thread(target=_heart_beat, args=(self._interval, self._callback), kwargs=dict(thread_dict))
-        thread_dict["threading.Thread"] = threading.Thread
+        thread = threading.Thread(target=_heart_beat, args=(self._interval, self._callback), kwargs=dict(thread_dict))
+        thread_dict["thread"] = thread
         with type(self)._all_threads_lock:
             if id(self) in type(self)._all_threads:
                 return
             type(self)._all_threads[id(self)] = thread_dict
         alive_lock.acquire()
-        threading.Thread.start()
+        thread.start()
 
     def stop(self, finalized: bool = True):
         with type(self)._all_threads_lock:
@@ -467,13 +467,13 @@ class HeartBeat:
             thread_dict = type(self)._all_threads.pop(id(self))
         running_lock = thread_dict["running_lock"]
         alive_lock = thread_dict["alive_lock"]
-        threading.Thread = thread_dict["threading.Thread"]
+        thread = thread_dict["thread"]
         del thread_dict
         alive_lock: threading.Lock
-        threading.Thread: threading.Thread
+        thread: threading.Thread
         with running_lock:
             alive_lock.release()
-        threading.Thread.join()
+        thread.join()
         if finalized:
             if self._final_callback is not None:
                 self._final_callback()
