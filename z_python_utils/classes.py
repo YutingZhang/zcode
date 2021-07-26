@@ -389,6 +389,10 @@ class SizedWrapperOfIterable:
         return iter(self._obj)
 
 
+class _ObjectPoolDefaultValueNotSet:
+    pass
+
+
 class ObjectPool:
 
     def __init__(self):
@@ -411,16 +415,21 @@ class ObjectPool:
             object_id = uuid.uuid4()
             while object_id in self.d:
                 object_id = uuid.uuid4()
-            self.d[object_id] = obj
+            self.d[object_id] = (obj, os.getpid())
             return object_id
 
-    def pop(self, object_id):
+    def pop(self, object_id, default_value: Any = _ObjectPoolDefaultValueNotSet()):
         with self._lock:
-            return self.d.pop(object_id)
+            if not isinstance(default_value, _ObjectPoolDefaultValueNotSet) and object_id not in self.d:
+                return default_value
+            obj, the_pid = self.d[object_id]
+            if the_pid == os.getpid():
+                self.d.pop(object_id)
+            return obj
 
     def get(self, object_id):
         with self._lock:
-            return self.d[object_id]
+            return self.d[object_id][0]
 
 
 def get_class_fullname(a, use_filename_for_main: bool = False):
