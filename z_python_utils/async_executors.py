@@ -15,7 +15,8 @@ from z_python_utils.classes import ObjectPool
 
 
 # FIXME: this is a money patch
-
+# See: https://www.py4u.net/discuss/151784
+\
 def mpm_AutoProxy(token, serializer, manager=None, authkey=None,
               exposed=None, incref=True, manager_owned=False):
     '''
