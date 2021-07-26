@@ -406,7 +406,7 @@ def different_subfolders_from_list(a: List[str]) -> (List[str], str):
 @contextmanager
 def open_with_lock(filename: str, mode='r', url_with_smart_open: bool = True):
     if url_with_smart_open and _url_pattern.match(filename):
-        with smart_open.open(filename, mode) as fd:
+        with better_smart_open(filename, mode) as fd:
             yield fd
     else:
         with open(filename, mode) as fd:
@@ -418,13 +418,39 @@ def open_with_lock(filename: str, mode='r', url_with_smart_open: bool = True):
 def smart_exists(filename: str):
     if _url_pattern.match(filename):
         try:
-            with smart_open.open(filename, 'rb'):
+            with better_smart_open(filename, 'rb'):
                 pass
             return True
         except (OSError, FileNotFoundError):
             return False
     else:
         return os.path.exists(filename)
+
+
+class _S3:
+
+    _default_s3_client = None
+
+    @classmethod
+    def default_s3_client(cls):
+        if cls._default_s3_client is None:
+            import boto3
+            cls._default_s3_client = boto3.client('s3')
+        return cls._default_s3_client
+
+
+def better_smart_open(uri, mode, **kwargs):
+    kwargs = dict(kwargs)
+    if uri.startswith('s3://'):
+        if "transport_params" in kwargs:
+            transport_params = kwargs['transport_params']
+        else:
+            transport_params = dict()
+        if "client" not in transport_params:
+            # open default client
+            transport_params["client"] = _S3.default_s3_client()
+        kwargs["transport_params"] = transport_params
+    return smart_open.open(uri, mode, **kwargs)
 
 
 def robust_remove(filename: str, ignore_url: bool = True):
