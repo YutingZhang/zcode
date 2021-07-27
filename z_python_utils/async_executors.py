@@ -16,7 +16,7 @@ from z_python_utils.classes import ObjectPool
 
 # FIXME: this is a money patch
 # See: https://www.py4u.net/discuss/151784
-\
+
 def mpm_AutoProxy(token, serializer, manager=None, authkey=None,
               exposed=None, incref=True, manager_owned=False):
     '''
@@ -438,10 +438,15 @@ class HeartBeat:
     _all_threads = dict()
     _all_threads_lock = threading.Lock()
 
-    def __init__(self, interval: float, callback: Callable, final_callback: Optional[Callable] = None):
+    def __init__(
+            self, interval: float, callback: Callable,
+            final_callback: Optional[Callable] = None,
+            stop_callback: Optional[Callable] = None,
+    ):
         self._interval = interval   # in sec
         self._callback = callback
         self._final_callback = final_callback
+        self._stop_callback = stop_callback
 
     def start(self):
         with type(self)._all_threads_lock:
@@ -478,6 +483,7 @@ class HeartBeat:
         if finalized:
             if self._final_callback is not None:
                 self._final_callback()
+        self._stop_callback()
 
     def __enter__(self):
         self.start()
