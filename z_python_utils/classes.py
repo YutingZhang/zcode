@@ -410,11 +410,15 @@ class ObjectPool:
                 self._d = dict()
             return self._d
 
+    @staticmethod
+    def generate_uuid():
+        return str(os.getpid()) + "-" + str(uuid.uuid4())
+
     def add(self, obj):
         with self._lock:
-            object_id = uuid.uuid4()
+            object_id = self.generate_uuid()
             while object_id in self.d:
-                object_id = uuid.uuid4()
+                object_id = self.generate_uuid()
             self.d[object_id] = (obj, os.getpid())
             return object_id
 

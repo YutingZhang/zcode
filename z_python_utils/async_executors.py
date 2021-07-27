@@ -653,12 +653,14 @@ ExecutorBaseManager.register(
 class ExecutorManager(ExecutorBaseManager):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._executor_manger_start_pid = os.getpid()
         self.start()
 
     def __del__(self):
         if hasattr(ExecutorBaseManager, "__del__"):
             getattr(ExecutorBaseManager, "__del__")(self)
-        self.shutdown()
+        if self._executor_manger_start_pid == os.getpid():  # fork safety
+            self.shutdown()
 
 
 class ManagedCrossProcessPoolExecutor:
@@ -685,8 +687,7 @@ class ManagedCrossProcessPoolExecutor:
     def __del__(self):
         self.submit = None
         self._executor = None
-        if self._pid == os.getpid():
-            self.manager_pool.pop(self._manager_id)
+        self.manager_pool.pop(self._manager_id, None)
 
 
 MCPPoolExecutor = ManagedCrossProcessPoolExecutor
