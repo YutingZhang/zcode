@@ -441,12 +441,12 @@ class HeartBeat:
     def __init__(
             self, interval: float, callback: Callable,
             final_callback: Optional[Callable] = None,
-            stop_callback: Optional[Callable] = None,
+            stopping_callback: Optional[Callable] = None,
     ):
         self._interval = interval   # in sec
         self._callback = callback
         self._final_callback = final_callback
-        self._stop_callback = stop_callback
+        self._stopping_callback = stopping_callback
 
     def start(self):
         with type(self)._all_threads_lock:
@@ -483,7 +483,8 @@ class HeartBeat:
         if finalized:
             if self._final_callback is not None:
                 self._final_callback()
-        self._stop_callback()
+        if self._stopping_callback is not None:
+            self._stopping_callback()
 
     def __enter__(self):
         self.start()
