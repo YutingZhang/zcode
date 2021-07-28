@@ -72,9 +72,16 @@ def system_env_dict() -> dict:
     return env_dict
 
 
-def run_and_get_stdout(cmd: str, input_str: Optional[str] = None) -> (str, str, int):
+def robustPopen(*args, **kwargs):
     proc = call_until_success(
-        OSError, subprocess.Popen, cmd,
+        OSError, subprocess.Popen, *args, **kwargs
+    )
+    return proc
+
+
+def run_and_get_stdout(cmd: str, input_str: Optional[str] = None) -> (str, str, int):
+    proc = robustPopen(
+        cmd,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE if input_str else subprocess.DEVNULL,
         executable="bash",
         shell=True
