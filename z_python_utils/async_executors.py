@@ -638,7 +638,7 @@ class CrossProcessPoolExecutor:
 
 ExecutorBaseManager.register(
     "Executor", CrossProcessPoolExecutor,
-    exposed=['submit', 'get_results_holder_id', 'set_results_holder_remote']
+    exposed=['submit', 'get_results_holder_id', 'set_results_holder_remote', 'shutdown']
 )
 ExecutorBaseManager.register(
     "ExecutorResultFuture", CrossProcessFuture,
@@ -653,14 +653,11 @@ ExecutorBaseManager.register(
 class ExecutorManager(ExecutorBaseManager):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._executor_manger_start_pid = os.getpid()
         self.start()
 
     def __del__(self):
         if hasattr(ExecutorBaseManager, "__del__"):
             getattr(ExecutorBaseManager, "__del__")(self)
-        if self._executor_manger_start_pid == os.getpid():  # fork safety
-            self.shutdown()
 
 
 class ManagedCrossProcessPoolExecutor:
