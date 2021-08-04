@@ -443,7 +443,6 @@ class _S3:
             import boto3
             cls._default_aws_session = boto3.Session()
             cls._default_s3_client = cls._default_aws_session.client('s3')
-        import ipdb; ipdb.set_trace()
         return cls._default_s3_client
 
 
