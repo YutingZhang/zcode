@@ -429,13 +429,21 @@ def smart_exists(filename: str):
 
 class _S3:
 
+    _default_aws_session = None
     _default_s3_client = None
+    _pid = None
 
     @classmethod
     def default_s3_client(cls):
+        my_pid = os.getpid()
+        if my_pid != cls._pid:
+            cls._default_s3_client = None
+            cls._pid = my_pid
         if cls._default_s3_client is None:
             import boto3
-            cls._default_s3_client = boto3.client('s3')
+            cls._default_aws_session = boto3.Session()
+            cls._default_s3_client = cls._default_aws_session.client('s3')
+        import ipdb; ipdb.set_trace()
         return cls._default_s3_client
 
 
