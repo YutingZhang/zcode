@@ -462,9 +462,17 @@ def load_obj_from_file(obj_spec: str, package_dirs: Optional[List[str]] = None):
         obj_spec_fn_obj = obj_spec.split(':')
         obj_name = obj_spec_fn_obj[-1]
         py_filename = os.path.abspath(":".join(obj_spec_fn_obj[:-1]))
-        module_name = os.path.splitext(os.path.basename(py_filename))[0]
-        obj_spec = module_name + "." + obj_name
-        package_dirs.append(os.path.dirname(py_filename))
+        if os.path.isfile(py_filename):
+            module_name = os.path.splitext(os.path.basename(py_filename))[0]
+            module_parent_dir = os.path.dirname(py_filename)
+            obj_spec = module_name + "." + obj_name
+        elif os.path.isdir(py_filename):
+            module_parent_dir = py_filename
+            obj_spec = obj_name
+        else:
+            raise AssertionError("cannot find file or dir: " + py_filename)
+
+        package_dirs.append(module_parent_dir)
 
     for pp in package_dirs:
         pp = os.path.abspath(pp)
