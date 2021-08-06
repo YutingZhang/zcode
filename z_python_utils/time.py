@@ -1,7 +1,8 @@
 import time
-from collections import OrderedDict
+from collections import OrderedDict, deque
 import datetime
-from typing import Sized
+from typing import Sized, List, Union, Callable, Any, Iterable, Optional
+import threading
 
 
 def time_stamp_str():
@@ -165,3 +166,87 @@ def tic_toc_progress(a, interval: float = 1, name: str = None, print_func=print)
             line += '/ %d' % n
         tic_toc_print(line)
         yield x
+
+
+def print_time_lapse(t):
+    print("Time lapsed: ", datetime.timedelta(seconds=t))
+
+
+class ParallelRunIfTimeout:
+
+    def __init__(
+            self, time_points: Union[List[float], float],
+            callback_func: Optional[Callable[[float], Any]] = None,
+            main_func: Optional[Callable] = None
+    ):
+        if not time_points:
+            time_points = None
+        elif not isinstance(time_points, Iterable):
+            time_points = [time_points]
+        self._time_points = time_points
+        if self._time_points is None:
+            return
+        self._overall_lock = threading.Lock()
+        self._start_end_call_lock = threading.Lock()
+        self._timer_locks = deque()
+        if callback_func is None:
+            callback_func = print_time_lapse
+        self._callback_func = callback_func
+        self._thread = None
+        self._main_func = main_func
+
+    def _timer(self):
+        starting_time = datetime.datetime.now()
+        for t in self._time_points:
+            with self._overall_lock:
+                lck = self._timer_locks[0]
+            lck: threading.Lock
+            timeout_sec = (starting_time + datetime.timedelta(seconds=t) - datetime.datetime.now()).total_seconds()
+            if lck.acquire(timeout=timeout_sec):
+                with self._overall_lock:
+                    if self._thread is not None:
+                        self._timer_locks.popleft()
+                    return
+            with self._overall_lock:
+                self._callback_func(t)
+
+    def start(self):
+        with self._start_end_call_lock:
+            if self._time_points is None:
+                return
+            with self._overall_lock:
+                if self._thread is not None:
+                    return
+                self._timer_locks.clear()
+                for _ in range(len(self._time_points)):
+                    lck = threading.Lock()
+                    lck.acquire()
+                    self._timer_locks.append(lck)
+                self._thread = threading.Thread(target=self._timer)
+                self._thread.start()
+
+    def end(self):
+        with self._start_end_call_lock:
+            if self._time_points is None:
+                return
+            with self._overall_lock:
+                if self._thread is None:
+                    return
+                lck: threading.Lock
+                for lck in self._timer_locks:
+                    lck.release()
+            self._thread.join()
+            with self._overall_lock:
+                self._timer_locks.clear()
+
+    def __enter__(self):
+        self.start()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end()
+
+    def __call__(self, *args, **kwargs):
+        assert self._main_func is not None, "main function is not set"
+        with self:
+            self._main_func(*args, **kwargs)
+
