@@ -183,7 +183,7 @@ class ParallelRunIfTimeout:
             time_points = None
         elif not isinstance(time_points, Iterable):
             time_points = [time_points]
-        self._time_points = time_points
+        self._time_points = sorted(time_points)
         if self._time_points is None:
             return
         self.__overall_lock = None
