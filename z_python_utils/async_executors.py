@@ -188,6 +188,48 @@ ThreadWorkerExecutor = partial(WorkerExecutor, use_thread_pool=True)
 immediate_executor = ImmediateExecutor()
 
 
+class SubmitterThrottle:
+    def __init__(
+            self,
+            executor: Union[futures.ThreadPoolExecutor, futures.ProcessPoolExecutor],
+            bandwidth: int,
+            done_callback: Optional[Callable] = None
+    ):
+        self._executor = executor
+        self._bandwidth = bandwidth
+        self._op_lock = threading.Lock()
+        self._pending_futures = set()
+        self._task_count = 0
+        self._throttle_lock = threading.Lock()
+        self._done_callback = done_callback
+        self._joined_lock = threading.Lock()
+
+    def claim_done(self, future_obj, task_id: int):
+        with self._op_lock:
+            self._pending_futures.remove(task_id)
+            if len(self._pending_futures) == self._bandwidth:
+                self._throttle_lock.release()
+            if self._done_callback is not None:
+                self._done_callback(task_id, future_obj)
+            if not self._pending_futures:
+                self._joined_lock.release()
+
+    def submit(self, *args, **kwargs):
+        self._throttle_lock.acquire()
+        with self._op_lock:
+            r = self._executor.submit(*args, **kwargs)
+            self._pending_futures.add(self._task_count)
+            r.add_done_callback(partial(self.claim_done, task_id=self._task_count))
+            self._task_count += 1
+            self._joined_lock.acquire(blocking=False)
+            if len(self._pending_futures) <= self._bandwidth:
+                self._throttle_lock.release()
+
+    def join(self):
+        with self._joined_lock:
+            pass
+
+
 class ProcessPoolExecutorWithProgressBar:
 
     def __init__(
@@ -199,7 +241,6 @@ class ProcessPoolExecutorWithProgressBar:
         self._num_workers = num_workers
         self._num_tasks = num_tasks
         self._title = title
-        self._results = deque()
         if self._num_workers <= 0:
             self._executor = immediate_executor
         else:
@@ -212,17 +253,28 @@ class ProcessPoolExecutorWithProgressBar:
             if self._title:
                 print("[%s] " % self._title, end="")
             if self._num_workers > 0:
-                print("Submit tasks", end="")
+                print(f"Run tasks ({self._num_workers} workers)", end="")
             else:
-                print("Run tasks", end="")
+                print("Run tasks (main thread)", end="")
             if self._num_tasks:
                 print(": ")
                 self._create_pbar(total=self._num_tasks)
             else:
                 print(" ...")
 
+        if self._num_workers > 0:
+            throttle_bandwidth = self._num_workers * 2
+            self._submitter_throttle = SubmitterThrottle(
+                self._executor, throttle_bandwidth, done_callback=self.done_callback
+            )
+            self._submit_func = self._submitter_throttle.submit
+        else:
+            self._submitter_throttle = None
+            self._submit_func = self._executor.submit
+
         self._store_results = store_results
-        self._result_vals = []
+        self._result_vals = dict()
+        self._task_count = 0
 
         self._open_for_submit = True
 
@@ -250,38 +302,26 @@ class ProcessPoolExecutorWithProgressBar:
         if self._pbar is not None:
             self._pbar.update(1)
 
+    def done_callback(self, task_id: int, future_obj):
+        if self._store_results:
+            self._result_vals[task_id] = future_obj.result()
+        self._inc_pbar()
+
     def submit(self, *args, **kwargs):
         assert self._open_for_submit, "executor is joined/joining"
-        r = self._executor.submit(*args, **kwargs)
-        if self._num_workers > 0:
-            self._results.append(r)
-        else:
-            if self._store_results:
-                self._result_vals.append(r.result())
-        self._inc_pbar()
+        r = self._submit_func(*args, **kwargs)
+        if self._num_workers <= 0:
+            self.done_callback(self._task_count, r)
+        self._task_count += 1
         return r
 
     def submit_dummy(self):
         self._inc_pbar()
 
     def join(self):
-        self._close_pbar()
-        if self._num_workers <= 0:
-            return
-
-        if self._need_pbar:
-            if self._title:
-                print("[%s] " % self._title, end="")
-            print("Run tasks: ")
-
-        self._create_pbar(total=len(self._results))
-        while self._results:
-            r = self._results.popleft()
-            r_val = r.result()
-            if self._store_results:
-                self._result_vals.append(r_val)
-            del r_val
-            self._inc_pbar()
+        self._open_for_submit = False
+        if self._submitter_throttle is not None:
+            self._submitter_throttle.join()
         self._close_pbar()
 
     def __del__(self):
@@ -293,7 +333,9 @@ class ProcessPoolExecutorWithProgressBar:
 
     def get_results(self):
         assert self._store_results, "results are not stored"
-        return self._result_vals
+        if self._submitter_throttle is not None:
+            self._submitter_throttle.join()
+        return [self._result_vals[task_id] for task_id in range(self._task_count)]
 
 
 class DetachableExecutorWrapper:
