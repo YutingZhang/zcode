@@ -192,10 +192,12 @@ class SubmitterThrottle:
     def __init__(
             self,
             executor: Union[futures.ThreadPoolExecutor, futures.ProcessPoolExecutor],
-            bandwidth: int,
+            bandwidth: Union[int, None],
             done_callback: Optional[Callable] = None
     ):
         self._executor = executor
+        if bandwidth is None:
+            bandwidth = float('inf')
         self._bandwidth = bandwidth
         self._op_lock = threading.Lock()
         self._pending_futures = set()
@@ -234,8 +236,17 @@ class ProcessPoolExecutorWithProgressBar:
 
     def __init__(
             self, num_workers: int = 0, num_tasks: Optional[int] = None, title: Optional[str] = None,
-            use_thread_pool: bool = False, store_results: bool = False
+            use_thread_pool: bool = False, store_results: bool = False, throttling_bandwidth: int = 0
     ):
+        """
+        Executor that show a progress bar
+        :param num_workers:
+        :param num_tasks:
+        :param title:
+        :param use_thread_pool:
+        :param store_results:
+        :param throttling_bandwidth: 0 for automatic, None for infinite
+        """
 
         self._pbar = None
         self._num_workers = num_workers
@@ -263,9 +274,11 @@ class ProcessPoolExecutorWithProgressBar:
                 print(" ...")
 
         if self._num_workers > 0:
-            throttle_bandwidth = self._num_workers * 2
+            if throttling_bandwidth is not None:
+                if throttling_bandwidth <= 0:
+                    throttling_bandwidth = self._num_workers * 2
             self._submitter_throttle = SubmitterThrottle(
-                self._executor, throttle_bandwidth, done_callback=self.done_callback
+                self._executor, throttling_bandwidth, done_callback=self.done_callback
             )
             self._submit_func = self._submitter_throttle.submit
         else:
