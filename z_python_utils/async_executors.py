@@ -253,7 +253,7 @@ class ProcessPoolExecutorWithProgressBar:
             if self._title:
                 print("[%s] " % self._title, end="")
             if self._num_workers > 0:
-                print(f"Run tasks ({self._num_workers} workers)", end="")
+                print(f"Run tasks ({self._num_workers} {'thread' if use_thread_pool else 'process'} workers)", end="")
             else:
                 print("Run tasks (main thread)", end="")
             if self._num_tasks:
