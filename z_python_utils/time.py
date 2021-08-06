@@ -186,14 +186,26 @@ class ParallelRunIfTimeout:
         self._time_points = time_points
         if self._time_points is None:
             return
-        self._overall_lock = threading.Lock()
-        self._start_end_call_lock = threading.Lock()
+        self.__overall_lock = None
+        self.__start_end_call_lock = None
         self._timer_locks = deque()
         if callback_func is None:
             callback_func = print_time_lapse
         self._callback_func = callback_func
         self._thread = None
         self._main_func = main_func
+
+    @property
+    def _overall_lock(self) -> threading.Lock:
+        assert self.__overall_lock is not None, "lock is not initialized"
+        return self.__overall_lock
+
+    @property
+    def _start_end_call_lock(self) -> threading.Lock:
+        if self.__start_end_call_lock is None:
+            self.__start_end_call_lock = threading.Lock()
+            self.__overall_lock = threading.Lock()
+        return self.__start_end_call_lock
 
     def _timer(self):
         starting_time = datetime.datetime.now()
