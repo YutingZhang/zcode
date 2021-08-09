@@ -262,5 +262,5 @@ class ParallelRunIfTimeout:
     def __call__(self, *args, **kwargs):
         assert self._main_func is not None, "main function is not set"
         with self:
-            self._main_func(*args, **kwargs)
+            return self._main_func(*args, **kwargs)
 

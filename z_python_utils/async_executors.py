@@ -147,7 +147,7 @@ class WorkerExecutor:
             self._results.append(r)
         return r
 
-    def join_and_shutdown(self, wait_callback: Union[Callable, None]=None):
+    def join_and_shutdown(self, wait_callback: Union[Callable, None] = None):
         self.join(wait_callback=wait_callback, shutdown=True)
 
     def __del__(self):
@@ -610,7 +610,8 @@ class _CrossProcessResultsHolder:
         with self._results_lock:
             self._available_result_index.add(result_id)
             r = self._results.pop(result_id)
-            return r[0].result()
+            d = r[0].result()
+            return d
 
     def flush_all_results(self):
         with self._results_lock:
