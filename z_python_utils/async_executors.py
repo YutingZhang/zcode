@@ -595,7 +595,8 @@ class _CrossProcessResultsHolder:
         return result_id
 
     def set_future(self, result_id: int, future_obj: CrossProcessFuture):
-        self._results[result_id][1] = future_obj
+        with self._results_lock:
+            self._results[result_id][1] = future_obj
 
     def get(self, result_id: int):
         with self._results_lock:
