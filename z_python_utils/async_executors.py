@@ -1,4 +1,4 @@
-import uuid
+import sys
 from typing import Union, Callable, Optional, Type
 from concurrent import futures
 import threading
@@ -556,6 +556,10 @@ class ExecutorBaseManager(mpm.BaseManager):
     pass
 
 
+class _FailedToGet:
+    pass
+
+
 class CrossProcessFuture:
     def __init__(self, results_holder, result_id: int):
         self._results_holder: _CrossProcessResultsHolderRemote = results_holder
@@ -564,8 +568,16 @@ class CrossProcessFuture:
         self._lock = threading.Lock()
 
     def result(self):
-        if self._results_holder is not None:
-            self.set_result(self._results_holder.pop(self._result_id))
+        with self._lock:
+            result_holder = self._results_holder
+        if result_holder is not None:
+            d = self._results_holder.pop(self._result_id)
+            with self._lock:
+                if isinstance(d, _FailedToGet):
+                    err_msg = "internal error: result is not ready and cannot be obtained"
+                    print(err_msg, file=sys.stderr)
+                    assert result_holder is None, err_msg
+            self.set_result(d)
         return self._result
 
     def set_result(self, r):
@@ -596,19 +608,27 @@ class _CrossProcessResultsHolder:
 
     def set_future(self, result_id: int, future_obj: CrossProcessFuture):
         with self._results_lock:
+            if result_id not in self._results:
+                return      # remark: this should not happen
             self._results[result_id][1] = future_obj
 
     def get(self, result_id: int):
         with self._results_lock:
+            if result_id not in self._results:
+                return _FailedToGet()
             return self._results[result_id][0].result()
 
     def remove(self, result_id: int):
         with self._results_lock:
+            if result_id not in self._results:
+                return
             self._available_result_index.add(result_id)
             self._results.pop(result_id)
 
     def pop(self, result_id: int):
         with self._results_lock:
+            if result_id not in self._results:
+                return _FailedToGet()
             self._available_result_index.add(result_id)
             r = self._results.pop(result_id)
             d = r[0].result()
