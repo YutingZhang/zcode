@@ -165,6 +165,16 @@ def do_nothing(*args, **kwargs):
     pass
 
 
+def run_and_print_trackback_if_exception(*args, **kwargs):
+    try:
+        return args[0](*args[1:], **kwargs)
+    except (KeyboardInterrupt, SystemError):
+        raise
+    except:
+        import traceback
+        traceback.print_exc()
+        raise
+
 # insert code blocks to regular functions -----------------------------------------------------------------
 
 

@@ -12,6 +12,7 @@ from shutil import rmtree
 import random
 import multiprocessing.managers as mpm
 from z_python_utils.classes import ObjectPool
+from z_python_utils.functions import run_and_print_trackback_if_exception
 
 
 # FIXME: this is a money patch
@@ -568,17 +569,25 @@ class CrossProcessFuture:
         self._lock = threading.Lock()
 
     def result(self):
-        with self._lock:
-            result_holder = self._results_holder
-        if result_holder is not None:
-            d = self._results_holder.pop(self._result_id)
+        try:
             with self._lock:
-                if isinstance(d, _FailedToGet):
-                    err_msg = "internal error: result is not ready and cannot be obtained"
-                    print(err_msg, file=sys.stderr)
-                    assert result_holder is None, err_msg
-            self.set_result(d)
-        return self._result
+                result_holder = self._results_holder
+            if result_holder is not None:
+                d = self._results_holder.pop(self._result_id)
+                with self._lock:
+                    if isinstance(d, _FailedToGet):
+                        err_msg = "internal error: result is not ready and cannot be obtained"
+                        print(err_msg, file=sys.stderr)
+                        assert result_holder is None, err_msg
+                self.set_result(d)
+            return self._result
+        except (KeyboardInterrupt, SystemError):
+            raise
+        except:
+            import traceback
+            print("CrossProcessFuture Error: error while getting results", file=sys.stderr)
+            traceback.print_exc()
+            raise
 
     def set_result(self, r):
         with self._lock:
@@ -695,7 +704,8 @@ class CrossProcessPoolExecutor:
 
     def submit(self, *args, **kwargs):
         with self._lock:
-            r = self._executor.submit(*args, **kwargs)
+            bound_func = partial(run_and_print_trackback_if_exception, *args, **kwargs)
+            r = self._executor.submit(bound_func)
             result_id = self._results_holder.add(r)   # TODO: interact with the real result holder
             rf = self._result_manager.ExecutorResultFuture(self._results_holder_remote, result_id)
             self._results_holder.set_future(result_id, rf)
