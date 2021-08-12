@@ -250,6 +250,7 @@ class ParallelRunIfTimeout:
                 for lck in self._timer_locks:
                     lck.release()
             self._thread.join()
+            self._thread = None
             with self._overall_lock:
                 self._timer_locks.clear()
 
