@@ -253,6 +253,7 @@ class ProcessPoolExecutorWithProgressBar:
         self._num_workers = num_workers
         self._num_tasks = num_tasks
         self._title = title
+        self._use_thread_pool = use_thread_pool
         if self._num_workers <= 0:
             self._executor = immediate_executor
         else:
@@ -339,8 +340,14 @@ class ProcessPoolExecutorWithProgressBar:
         self._close_pbar()
 
     def __del__(self):
+        self.join()
         self._close_pbar()
-        self._executor.shutdown()
+        if not self._use_thread_pool:
+            self._executor: futures.ProcessPoolExecutor
+            self._executor.shutdown(wait=False, cancel_futures=True)
+        else:
+            self._executor: futures.ThreadPoolExecutor
+            self._executor.shutdown()
 
     def shutdown(self, *args, **kwargs):
         self._executor.shutdown(*args, **kwargs)
