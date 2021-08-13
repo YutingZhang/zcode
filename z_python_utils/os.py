@@ -90,9 +90,11 @@ def run_and_get_stdout(cmd: str, input_str: Optional[str] = None) -> (str, str, 
         out, err = proc.communicate(input=input_str.encode())
     else:
         out, err = proc.communicate()
+    proc.wait()
     rc = proc.wait()
     out = out.decode()
     err = err.decode()
+    proc.terminate()
     return out, err, rc
 
 

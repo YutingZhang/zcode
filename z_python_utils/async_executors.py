@@ -342,15 +342,12 @@ class ProcessPoolExecutorWithProgressBar:
     def __del__(self):
         self.join()
         self._close_pbar()
-        if not self._use_thread_pool:
-            self._executor: futures.ProcessPoolExecutor
-            self._executor.shutdown(wait=False)
-        else:
-            self._executor: futures.ThreadPoolExecutor
-            self._executor.shutdown()
+        self.shutdown()
 
     def shutdown(self, *args, **kwargs):
-        self._executor.shutdown(*args, **kwargs)
+        if self._executor is not None:
+            self._executor.shutdown(*args, **kwargs)
+            self._executor = None
 
     def get_results(self):
         assert self._store_results, "results are not stored"
