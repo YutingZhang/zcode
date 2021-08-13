@@ -344,7 +344,7 @@ class ProcessPoolExecutorWithProgressBar:
         self._close_pbar()
         if not self._use_thread_pool:
             self._executor: futures.ProcessPoolExecutor
-            self._executor.shutdown(wait=False, cancel_futures=True)
+            self._executor.shutdown(wait=False)
         else:
             self._executor: futures.ThreadPoolExecutor
             self._executor.shutdown()
