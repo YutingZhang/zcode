@@ -30,6 +30,7 @@ __all__ = [
     'get_class_fullname',
     'load_obj_from_file',
     'ObjectPool',
+    'DummyEverything',
 ]
 
 
