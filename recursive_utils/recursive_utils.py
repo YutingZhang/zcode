@@ -280,13 +280,22 @@ def recursive_flatten_to_list(condition_func, x):
         return []
 
 
-def recursive_flatten_with_wrap_func(condition_func, x):
+class _FlattenUsedTag():
+    pass
+
+
+def recursive_flatten_with_wrap_func(condition_func, x, no_storing: bool = False):
 
     if condition_func is None:
         condition_func = recursive_generic_condition_func
 
-    return (recursive_flatten_to_list(condition_func, x),
-            lambda val: recursive_wrap(condition_func, val, x))
+    flat_out = recursive_flatten_to_list(condition_func, x)
+    if no_storing:
+        y = recursive_apply(condition_func, lambda *args: _FlattenUsedTag(), x)
+        def wrap_func(val): return recursive_wrap(lambda a: isinstance(a, _FlattenUsedTag), val, y)
+    else:
+        def wrap_func(val): return recursive_wrap(condition_func, val, x)
+    return flat_out, wrap_func
 
 
 def recursive_unpack(condition_func, x):
