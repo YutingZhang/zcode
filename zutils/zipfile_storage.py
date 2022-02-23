@@ -91,6 +91,9 @@ class ZipFileStorage:
     def keys(self):
         return self._key2ext.keys()
 
+    def __contains__(self, item):
+        return str(item) in self.keys()
+
     def values(self):
         return SizedWrapperOfIterable(self._values(), len(self))
 
