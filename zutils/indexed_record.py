@@ -13,7 +13,9 @@ import time
 __all__ = [
     'folder_to_record',
     "IndexedRecord",
-    "FolderToIndexedRecord"
+    "FolderToIndexedRecord",
+    'dumps_single_object',
+    'loads_single_object',
 ]
 
 
