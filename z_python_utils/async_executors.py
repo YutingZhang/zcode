@@ -763,6 +763,7 @@ class ManagedCrossProcessPoolExecutor:
         results_holder_remote = self.manager.ExecutorResultsHolderRemote(results_holder_id)
         self.executor.set_results_holder_remote(results_holder_remote)
         self.submit = self._executor.submit
+        self._executor = self._executor.shutdown
 
     @property
     def manager(self) -> ExecutorManager:
