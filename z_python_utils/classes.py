@@ -31,6 +31,7 @@ __all__ = [
     'load_obj_from_file',
     'ObjectPool',
     'DummyEverything',
+    'global_registry',
 ]
 
 
@@ -487,4 +488,47 @@ def load_obj_from_file(obj_spec: str, package_dirs: Optional[List[str]] = None):
     obj = getattr(mod, obj_name)
     return obj
 
+
+class GlobalRegistry:
+
+    _registry = dict()
+
+    @classmethod
+    def registry(cls):
+        return cls._registry
+
+    def __init__(self, obj, identifier=None, prefix=None):
+        self.obj = obj
+        self.identifier = identifier
+        self.prefix = prefix
+
+    def __enter__(self):
+        if self.identifier is None:
+            self.identifier = str(uuid.uuid4())
+            while (self.prefix, self.identifier) in type(self)._registry:
+                self.identifier = str(uuid.uuid4())
+        if (self.prefix, self.identifier) not in type(self)._registry:
+            type(self)._registry[self.prefix, self.identifier] = [self.obj, 0]
+        type(self)._registry[self.prefix, self.identifier][1] += 1
+        return self.prefix, self.identifier
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        type(self)._registry[self.prefix, self.identifier][1] -= 1
+        if type(self)._registry[self.prefix, self.identifier][1] <= 0:
+            type(self)._registry.pop((self.prefix, self.identifier))
+
+
+class _GlobalRegistryInterface:
+    def __call__(self, *args, **kwargs):
+        return GlobalRegistry(*args, **kwargs)
+
+    def __getitem__(self, item):
+        return GlobalRegistry.registry()[item][0]
+
+    @property
+    def all(self) -> dict:
+        return GlobalRegistry.registry()
+
+
+global_registry = _GlobalRegistryInterface()
 
