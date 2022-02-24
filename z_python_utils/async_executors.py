@@ -763,7 +763,7 @@ class ManagedCrossProcessPoolExecutor:
         results_holder_remote = self.manager.ExecutorResultsHolderRemote(results_holder_id)
         self.executor.set_results_holder_remote(results_holder_remote)
         self.submit = self._executor.submit
-        self._executor = self._executor.shutdown
+        self.shutdown = self._executor.shutdown
 
     @property
     def manager(self) -> ExecutorManager:
@@ -775,6 +775,7 @@ class ManagedCrossProcessPoolExecutor:
 
     def __del__(self):
         self.submit = None
+        self.shutdown = None
         self._executor = None
         self.manager_pool.pop(self._manager_id, None)
 
