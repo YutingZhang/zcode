@@ -6,12 +6,13 @@ __all__ = [
 from zutils.indexed_record import dumps_single_object, loads_single_object
 from zutils.zipfile_storage import ZipFileStorage
 from z_python_utils.classes import global_registry
-from z_python_utils import mkdir_p
+from z_python_utils.io import mkdir_p, robust_remove
 from typing import Sized
 from .async_executors import MCPThreadPoolExecutor, ProcessPoolExecutorWithProgressBar
 from uuid import uuid4
 import os
 import json
+import datetime
 
 
 class ZipFolderDatasetCreator:
@@ -40,9 +41,10 @@ class ZipFolderDatasetCreator:
             assert n == self.num_macro_samples, "raw"
         for epoch in range(num_epochs):
             print("Epoch: %d / %d" % (epoch+1, num_epochs))
-            epoch_uuid = str(uuid4())
+            epoch_uuid = datetime.datetime.now().isoformat().replace(":", "") + "-" + str(uuid4())
+            epoch_prefix = os.path.join(self.folder_path, epoch_uuid)
             epoch_zipfile = ZipFileStorage(
-                os.path.join(self.folder_path, epoch_uuid + ".zip"), 'w',
+                epoch_prefix + ".zip", 'w',
                 serialization_func=dumps_single_object, deserialization_func=loads_single_object
             )
             per_sample_executor = ProcessPoolExecutorWithProgressBar(num_workers=num_workers, num_tasks=n)
@@ -62,6 +64,13 @@ class ZipFolderDatasetCreator:
             del per_sample_executor
             if zipfile_executor is not None:
                 zipfile_executor.shutdown()
+            with open(epoch_prefix + ".finished", "w") as f:
+                print(datetime.datetime.now().isoformat(), file=f)
+            num_micro_samples = len(epoch_zipfile)
+            with open(epoch_prefix + ".meta.json", 'w') as f:
+                json.dump(dict(
+                    num_micro_samples=num_micro_samples
+                ), f)
             epoch_zipfile.close()
 
 
