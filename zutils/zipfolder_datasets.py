@@ -64,13 +64,13 @@ class ZipFolderDatasetCreator:
             del per_sample_executor
             if zipfile_executor is not None:
                 zipfile_executor.shutdown()
-            with open(epoch_prefix + ".finished", "w") as f:
-                print(datetime.datetime.now().isoformat(), file=f)
             num_micro_samples = len(epoch_zipfile)
             with open(epoch_prefix + ".meta.json", 'w') as f:
                 json.dump(dict(
                     num_micro_samples=num_micro_samples
                 ), f)
+            with open(epoch_prefix + ".complete", "w") as f:
+                print(datetime.datetime.now().isoformat(), file=f)
             epoch_zipfile.close()
 
 
@@ -101,7 +101,11 @@ def _get_and_store_samples(i, dataset_registry, zipfile_registry, zipfile_execut
 
 class ZipFolderDataset:
     def __init__(self, folder_path: str):
-        pass
+        with open(os.path.join(folder_path, "meta.json"), "r") as f:
+            m = json.load(f)
+        self.num_macro_samples = m['num_macro_samples']
+        # TODO: get all epochs
+        # TODO: get all micro sample numbers per epoch
 
     def __getitem__(self, item):
         pass
