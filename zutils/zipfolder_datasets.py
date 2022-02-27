@@ -15,18 +15,18 @@ import json
 
 
 class ZipFolderDatasetCreator:
-    def __init__(self, folder_path: str, num_samples: int):
+    def __init__(self, folder_path: str, num_macro_samples: int):
         self.folder_path = folder_path
         if os.path.exists(self.meta_file_path):
             with open(self.meta_file_path, 'r') as f:
                 m = json.load(f)
-            assert m['num_samples'] == num_samples, "mismatched num_samples"
+            assert m['num_macro_samples'] == num_macro_samples, "mismatched num_macro_samples"
         else:
             with open(self.meta_file_path, 'w') as f:
                 json.dump(dict(
-                    num_samples=num_samples
+                    num_macro_samples=num_macro_samples
                 ), f)
-        self.num_samples = num_samples
+        self.num_macro_samples = num_macro_samples
         mkdir_p(self.folder_path)
 
     @property
@@ -34,10 +34,10 @@ class ZipFolderDatasetCreator:
         return os.path.join(self.folder_path, "meta.json")
 
     def generate(self, orig_dataset, num_epochs: int, num_workers: int):
-        n = self.num_samples
+        n = self.num_macro_samples
         if isinstance(orig_dataset, Sized):
             n = len(orig_dataset)
-            assert n == self.num_samples, "raw"
+            assert n == self.num_macro_samples, "raw"
         for epoch in range(num_epochs):
             print("Epoch: %d / %d" % (epoch+1, num_epochs))
             epoch_uuid = str(uuid4())
@@ -88,3 +88,21 @@ def _get_and_store_samples(i, dataset_registry, zipfile_registry, zipfile_execut
     else:
         fr = zipfile_executor.submit(_write_to_zip_file, zipfile_registry, d, i)
         fr.result()
+
+
+class ZipFolderDataset:
+    def __init__(self, folder_path: str):
+        pass
+
+    def __getitem__(self, item):
+        pass
+
+    def __len__(self):
+        pass
+
+    def num_epochs(self):
+        pass
+
+    def get_item(self, epoch_id, sample_id):
+        pass
+
