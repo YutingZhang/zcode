@@ -13,6 +13,7 @@ from uuid import uuid4
 import os
 import json
 import datetime
+from functools import lru_cache
 
 
 class ZipFolderDatasetCreator:
@@ -34,7 +35,7 @@ class ZipFolderDatasetCreator:
     def meta_file_path(self) -> str:
         return os.path.join(self.folder_path, "meta.json")
 
-    def generate(self, orig_dataset, num_epochs: int, num_workers: int):
+    def generate(self, orig_dataset, num_epochs: int = 1, num_workers: int = 0):
         n = self.num_macro_samples
         if isinstance(orig_dataset, Sized):
             n = len(orig_dataset)
@@ -100,7 +101,8 @@ def _get_and_store_samples(i, dataset_registry, zipfile_registry, zipfile_execut
 
 
 class ZipFolderDataset:
-    def __init__(self, folder_path: str):
+    # Remark: this class is not thread safe
+    def __init__(self, folder_path: str, epoch_cache_size: int = 3):
         self.folder_path = folder_path
         with open(os.path.join(self.folder_path, "meta.json"), "r") as f:
             m = json.load(f)
@@ -124,6 +126,10 @@ class ZipFolderDataset:
         self.total_samples = sum(self.num_micro_samples)
         self._current_epoch = 0
         self._currently_visited_sample_ids = set()
+
+        self.epoch_cache_size = epoch_cache_size
+        self.epoch_zip_storage = lru_cache(epoch_cache_size)(self._epoch_zip_storage)
+        self._all_epoch_sample_ids = dict()
 
     @property
     def total_epochs(self) -> int:
@@ -154,6 +160,32 @@ class ZipFolderDataset:
             self.set_epoch(self.current_epoch + 1)
         return self.get_item(self.current_epoch, sample_id=0)
 
-    def get_item(self, epoch_id, sample_id):
-        pass
+    def _epoch_zip_storage(self, epoch_id: int):
+        return ZipFileStorage(
+            os.path.join(self.folder_path, self.epoch_filenames[epoch_id] + ".zip"), "r",
+            serialization_func=dumps_single_object, deserialization_func=loads_single_object
+        )
 
+    def epoch_sample_ids(self, epoch_id: int):
+        if epoch_id in self._all_epoch_sample_ids:
+            return self._all_epoch_sample_ids[epoch_id]
+
+        zf = self.epoch_zip_storage(epoch_id)
+        all_macro_mirco_id_pairs = []
+        for k in zf.keys():
+            if "-" in k:
+                macro_id, micro_id = k.split("-")
+                macro_id = int(macro_id)
+                micro_id = int(micro_id)
+            else:
+                macro_id = int(k)
+                micro_id = -1
+            all_macro_mirco_id_pairs.append((macro_id, micro_id))
+        all_macro_mirco_id_pairs = sorted(all_macro_mirco_id_pairs)
+        self._all_epoch_sample_ids[epoch_id] = all_macro_mirco_id_pairs
+
+    def get_item(self, epoch_id, sample_id):
+        macro_id, micro_id =  self.epoch_sample_ids(epoch_id)[sample_id]
+        zf = self.epoch_zip_storage(epoch_id)
+        d = zf["{:d}-{:d}".format(macro_id, micro_id)]
+        return d
