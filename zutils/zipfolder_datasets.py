@@ -123,6 +123,7 @@ class ZipFolderDataset:
             self.num_samples = None
         self.total_samples = sum(self.num_micro_samples)
         self._current_epoch = 0
+        self._currently_visited_sample_ids = set()
 
     @property
     def total_epochs(self) -> int:
@@ -134,15 +135,24 @@ class ZipFolderDataset:
 
     def set_epoch(self, epoch_id: int):
         self._current_epoch = epoch_id % self.total_epochs
-
-    def __getitem__(self, item):
-        pass
+        self._currently_visited_sample_ids = set()
 
     def __len__(self) -> int:
         if self.num_samples is not None:
             return self.num_samples
         else:
             return self.num_micro_samples[self.current_epoch]
+
+    def __iter__(self):
+        current_epoch = self.current_epoch
+        for i in range(len(self)):
+            yield self.get_item(current_epoch, i)
+        self.set_epoch(self.current_epoch + 1)
+
+    def __getitem__(self, i):
+        if i in self._currently_visited_sample_ids:
+            self.set_epoch(self.current_epoch + 1)
+        return self.get_item(self.current_epoch, sample_id=0)
 
     def get_item(self, epoch_id, sample_id):
         pass
