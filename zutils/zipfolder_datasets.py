@@ -101,20 +101,48 @@ def _get_and_store_samples(i, dataset_registry, zipfile_registry, zipfile_execut
 
 class ZipFolderDataset:
     def __init__(self, folder_path: str):
-        with open(os.path.join(folder_path, "meta.json"), "r") as f:
+        self.folder_path = folder_path
+        with open(os.path.join(self.folder_path, "meta.json"), "r") as f:
             m = json.load(f)
+        # macro meta
         self.num_macro_samples = m['num_macro_samples']
-        # TODO: get all epochs
-        # TODO: get all micro sample numbers per epoch
+        self.epoch_filenames = [
+            x[:-len('.complete')] for x in filter(lambda x: x.endswith('.complete'), os.listdir(self.folder_path))
+        ]
+        # micro meta
+        self.num_micro_samples = []
+        for epoch_fn in self.epoch_filenames:
+            with open(os.path.join(self.folder_path, epoch_fn + ".zip"), "r") as f:
+                sm = json.load(f)
+            self.num_micro_samples.append(sm['num_micro_samples'])
+        if not self.num_micro_samples:
+            self.num_samples = self.num_macro_samples
+        elif len(set(self.num_micro_samples)) == 1:
+            self.num_samples = self.num_micro_samples[0]
+        else:
+            self.num_samples = None
+        self.total_samples = sum(self.num_micro_samples)
+        self._current_epoch = 0
+
+    @property
+    def total_epochs(self) -> int:
+        return len(self.epoch_filenames)
+
+    @property
+    def current_epoch(self) -> int:
+        return self._current_epoch % self.total_epochs
+
+    def set_epoch(self, epoch_id: int):
+        self._current_epoch = epoch_id % self.total_epochs
 
     def __getitem__(self, item):
         pass
 
-    def __len__(self):
-        pass
-
-    def num_epochs(self):
-        pass
+    def __len__(self) -> int:
+        if self.num_samples is not None:
+            return self.num_samples
+        else:
+            return self.num_micro_samples[self.current_epoch]
 
     def get_item(self, epoch_id, sample_id):
         pass
