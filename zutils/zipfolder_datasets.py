@@ -3,6 +3,8 @@ __all__ = [
     'MultipleSamples',
 ]
 
+import random
+
 from zutils.indexed_record import dumps_single_object, loads_single_object
 from zutils.zipfile_storage import ZipFileStorage
 from z_python_utils.classes import global_registry
@@ -133,7 +135,7 @@ def _get_and_store_samples(i, dataset_registry, zipfile_registry, zipfile_execut
 
 class ZipFolderDataset:
     # Remark: this class is not thread safe
-    def __init__(self, folder_path: str, epoch_cache_size: int = 3):
+    def __init__(self, folder_path: str, random_iter: bool = False, epoch_cache_size: int = 3):
         self.folder_path = folder_path
         with open(os.path.join(self.folder_path, "meta.json"), "r") as f:
             m = json.load(f)
@@ -162,6 +164,8 @@ class ZipFolderDataset:
         self.epoch_zip_storage = lru_cache(epoch_cache_size)(self._epoch_zip_storage)
         self._all_epoch_sample_ids = dict()
 
+        self.random_iter = random_iter   # if True, it performs shuffling when iterating
+
     @property
     def total_epochs(self) -> int:
         return len(self.epoch_filenames)
@@ -182,7 +186,11 @@ class ZipFolderDataset:
 
     def __iter__(self):
         current_epoch = self.current_epoch
-        for i in range(len(self)):
+        sample_ids = range(len(self))
+        if self.random_iter:
+            sample_ids = list(sample_ids)
+            random.shuffle(sample_ids)
+        for i in sample_ids:
             yield self.get_item(current_epoch, i)
         self.set_epoch(self.current_epoch + 1)
 
