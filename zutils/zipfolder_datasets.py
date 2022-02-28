@@ -40,6 +40,10 @@ class ZipFolderDatasetCreator:
         if isinstance(orig_dataset, Sized):
             n = len(orig_dataset)
             assert n == self.num_macro_samples, "raw"
+        if num_workers > 0:
+            zipfile_executor = MCPThreadPoolExecutor(max_workers=1)
+        else:
+            zipfile_executor = ImmediateExecutor()
         for epoch in range(num_epochs):
             print("Epoch: %d / %d" % (epoch+1, num_epochs))
             epoch_uuid = datetime.datetime.now().isoformat().replace(":", "") + "-" + str(uuid4())
@@ -51,10 +55,6 @@ class ZipFolderDatasetCreator:
             )
             """
             per_sample_executor = ProcessPoolExecutorWithProgressBar(num_workers=num_workers, num_tasks=n)
-            if num_workers > 0:
-                zipfile_executor = MCPThreadPoolExecutor(max_workers=1)
-            else:
-                zipfile_executor = ImmediateExecutor()
             zipfile_registry = zipfile_executor.submit(_create_and_register_zip_file, epoch_prefix)
             zipfile_registry = zipfile_registry.result()
             with global_registry(orig_dataset) as dataset_registry:
@@ -77,6 +77,7 @@ class ZipFolderDatasetCreator:
                 ), f, sort_keys=True, indent=2, separators=(',', ': '))
             with open(epoch_prefix + ".complete", "w") as f:
                 print(datetime.datetime.now().isoformat(), file=f)
+        zipfile_executor.shutdown()
 
 
 class MultipleSamples(list):
