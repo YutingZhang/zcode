@@ -14,6 +14,7 @@ import os
 import json
 import datetime
 from functools import lru_cache
+from contextlib import contextmanager
 
 
 class ZipFolderDatasetCreator:
@@ -54,23 +55,19 @@ class ZipFolderDatasetCreator:
                 serialization_func=dumps_single_object, deserialization_func=loads_single_object
             )
             """
-            per_sample_executor = ProcessPoolExecutorWithProgressBar(num_workers=num_workers, num_tasks=n)
-            zipfile_registry = zipfile_executor.submit(_create_and_register_zip_file, epoch_prefix)
-            zipfile_registry = zipfile_registry.result()
-            with global_registry(orig_dataset) as dataset_registry:
+            with global_registry(orig_dataset) as dataset_registry, \
+                    _managed_zipfile_storage(zipfile_executor, epoch_prefix) as (zipfile_registry, ending_info):
+                per_sample_executor = ProcessPoolExecutorWithProgressBar(num_workers=num_workers, num_tasks=n)
                 for i in range(n):
                     per_sample_executor.submit(
                         _get_and_store_samples, i=i,
                         dataset_registry=dataset_registry, zipfile_registry=zipfile_registry,
                         zipfile_executor=zipfile_executor
                     )
-            per_sample_executor.join()
-            per_sample_executor.shutdown()
-            del per_sample_executor
-            num_micro_samples = zipfile_executor.submit(
-                _deregister_and_close_and_length_zip_file, zipfile_registry
-            )
-            num_micro_samples = num_micro_samples.result()
+                per_sample_executor.join()
+                per_sample_executor.shutdown()
+                del per_sample_executor
+            num_micro_samples = ending_info["num_micro_samples"]
             with open(epoch_prefix + ".meta.json", 'w') as f:
                 json.dump(dict(
                     num_micro_samples=num_micro_samples
@@ -98,6 +95,19 @@ def _deregister_and_close_and_length_zip_file(zipfile_registry):
     n = len(zf)
     zf.close()
     return n
+
+
+@contextmanager
+def _managed_zipfile_storage(zipfile_executor, epoch_prefix):
+    zipfile_registry = zipfile_executor.submit(_create_and_register_zip_file, epoch_prefix)
+    zipfile_registry = zipfile_registry.result()
+    ending_info = dict()
+    yield zipfile_registry, ending_info
+    num_micro_samples = zipfile_executor.submit(
+        _deregister_and_close_and_length_zip_file, zipfile_registry
+    )
+    num_micro_samples = num_micro_samples.result()
+    ending_info['num_micro_samples'] = num_micro_samples
 
 
 def _write_to_zip_file(zipfile_registry, d, i: int):
