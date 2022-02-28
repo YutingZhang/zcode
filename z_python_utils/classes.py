@@ -497,28 +497,51 @@ class GlobalRegistry:
     def registry(cls):
         return cls._registry
 
-    def __init__(self, obj, identifier=None, prefix=None):
+    @classmethod
+    def register(cls, obj, identifier=None, prefix=None, change_count: bool = True):
+        if identifier is None:
+            identifier = str(uuid.uuid4())
+            while (prefix, identifier) in cls._registry:
+                identifier = str(uuid.uuid4())
+        if (prefix, identifier) not in cls._registry:
+            cls._registry[prefix, identifier] = [obj, 0]
+        if change_count:
+            cls._registry[prefix, identifier][1] += 1
+        return prefix, identifier
+
+    @classmethod
+    def deregister(cls, prefixed_identifier, change_count: bool = True):
+        prefix, identifier = prefixed_identifier
+        if change_count:
+            cls._registry[prefix, identifier][1] -= 1
+        if cls._registry[prefix, identifier][1] <= 0:
+            cls._registry.pop((prefix, identifier))
+
+    def __init__(
+            self, obj, identifier=None, prefix=None,
+            change_count_at_enter: bool = True, change_count_at_exit: bool = True
+    ):
         self.obj = obj
         self.identifier = identifier
         self.prefix = prefix
+        self.change_count_at_enter = change_count_at_enter
+        self.change_count_at_exit = change_count_at_exit
 
     def __enter__(self):
-        if self.identifier is None:
-            self.identifier = str(uuid.uuid4())
-            while (self.prefix, self.identifier) in type(self)._registry:
-                self.identifier = str(uuid.uuid4())
-        if (self.prefix, self.identifier) not in type(self)._registry:
-            type(self)._registry[self.prefix, self.identifier] = [self.obj, 0]
-        type(self)._registry[self.prefix, self.identifier][1] += 1
+        self.prefix, self.identifier = type(self).register(
+            self.obj, self.identifier, self.prefix, change_count=self.change_count_at_enter
+        )
         return self.prefix, self.identifier
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        type(self)._registry[self.prefix, self.identifier][1] -= 1
-        if type(self)._registry[self.prefix, self.identifier][1] <= 0:
-            type(self)._registry.pop((self.prefix, self.identifier))
+        type(self).deregister((self.prefix, self.identifier), change_count=self.change_count_at_exit)
 
 
 class _GlobalRegistryInterface:
+    def __init__(self):
+        self.register = GlobalRegistry.register
+        self.deregister = GlobalRegistry.deregister
+
     def __call__(self, *args, **kwargs):
         return GlobalRegistry(*args, **kwargs)
 
