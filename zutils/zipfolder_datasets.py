@@ -27,7 +27,7 @@ class ZipFolderDatasetCreator:
             with open(self.meta_file_path, 'w') as f:
                 json.dump(dict(
                     num_macro_samples=num_macro_samples
-                ), f)
+                ), f, sort_keys=True, indent=2, separators=(',', ': '))
         self.num_macro_samples = num_macro_samples
         mkdir_p(self.folder_path)
 
@@ -69,7 +69,7 @@ class ZipFolderDatasetCreator:
             with open(epoch_prefix + ".meta.json", 'w') as f:
                 json.dump(dict(
                     num_micro_samples=num_micro_samples
-                ), f)
+                ), f, sort_keys=True, indent=2, separators=(',', ': '))
             with open(epoch_prefix + ".complete", "w") as f:
                 print(datetime.datetime.now().isoformat(), file=f)
             epoch_zipfile.close()
