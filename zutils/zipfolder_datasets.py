@@ -217,7 +217,7 @@ class ZipFolderDataset:
         )
 
     def epoch_zip_storage(self, epoch_id: int):
-        if self._lru_cached_epoch_zip_storage:
+        if self._lru_cached_epoch_zip_storage is None:
             self._lru_cached_epoch_zip_storage = lru_cache(self.epoch_cache_size)(self._epoch_zip_storage)
         return self._lru_cached_epoch_zip_storage(epoch_id)
 
