@@ -114,17 +114,24 @@ def order_preserving_unique(a):
 
 
 class OnlineShuffle:
-    def __init__(self, a: Iterable, window_size: int, random_generator: Optional[random.Random] = None):
+    def __init__(
+            self, a: Iterable, window_size: int, random_generator: Optional[random.Random] = None,
+            buffer_progress_title: Optional[str] = None
+    ):
         self.a = a
         self.window_size = window_size
         self.random_generator = random_generator
+        self.buffer_progress_title = buffer_progress_title
         if isinstance(self.a, Sized):
             self.__class__ = OnlineShuffleWithLength
         else:
             self.__class__ = OnlineShuffle
 
     def __iter__(self):
-        return _online_shuffle(self.a, window_size=self.window_size, random_generator=self.random_generator)
+        return _online_shuffle(
+            self.a, window_size=self.window_size, random_generator=self.random_generator,
+            buffer_progress_title=self.buffer_progress_title
+        )
 
 
 class OnlineShuffleWithLength(OnlineShuffle):
@@ -136,7 +143,10 @@ class OnlineShuffleWithLength(OnlineShuffle):
 online_shuffle = OnlineShuffle
 
 
-def _online_shuffle(a: Iterable, window_size: int, random_generator: Optional[random.Random] = None):
+def _online_shuffle(
+        a: Iterable, window_size: int, random_generator: Optional[random.Random] = None,
+        buffer_progress_title: Optional[str] = None
+):
 
     if window_size == 0:
         return a
@@ -151,10 +161,13 @@ def _online_shuffle(a: Iterable, window_size: int, random_generator: Optional[ra
         shuffle(a)
         return a
 
-    return _online_shuffle_internal(a, window_size, random_generator)
+    return _online_shuffle_internal(a, window_size, random_generator, buffer_progress_title=buffer_progress_title)
 
 
-def _online_shuffle_internal(a: Iterable, window_size: int, random_generator: Optional[random.Random] = None):
+def _online_shuffle_internal(
+        a: Iterable, window_size: int, random_generator: Optional[random.Random] = None,
+        buffer_progress_title: Optional[str] = None
+):
     assert window_size > 0, "window_size must be positive"
     shuffle = (
         random_generator.shuffle if random_generator is not None
@@ -166,10 +179,22 @@ def _online_shuffle_internal(a: Iterable, window_size: int, random_generator: Op
     )
     b = dict()
     s = set(range(window_size))
+
+    pbar = None
+    if buffer_progress_title:
+        from tqdm import tqdm
+        pbar = tqdm(total=window_size, desc=buffer_progress_title)
+
     for v in a:
         i = s.pop()
         b[i] = v
-        if not s:
+        if s:
+            if pbar is not None:
+                pbar.update(1)
+        else:
+            if pbar is not None:
+                pbar.close()
+                pbar = None
             j = window_randint(0, window_size)
             s.add(j)
             yield b.pop(j)
