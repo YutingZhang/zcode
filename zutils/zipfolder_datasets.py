@@ -1,6 +1,7 @@
 __all__ = [
     'ZipFolderDatasetCreator',
     'MultipleSamples',
+    'ZipFolderDataset',
 ]
 
 import random
