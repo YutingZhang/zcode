@@ -147,7 +147,7 @@ class ZipFolderDataset:
         # micro meta
         self.num_micro_samples = []
         for epoch_fn in self.epoch_filenames:
-            with open(os.path.join(self.folder_path, epoch_fn + ".zip"), "r") as f:
+            with open(os.path.join(self.folder_path, epoch_fn + ".meta.json"), "r") as f:
                 sm = json.load(f)
             self.num_micro_samples.append(sm['num_micro_samples'])
         if not self.num_micro_samples:
@@ -197,7 +197,8 @@ class ZipFolderDataset:
     def __getitem__(self, i):
         if i in self._currently_visited_sample_ids:
             self.set_epoch(self.current_epoch + 1)
-        return self.get_item(self.current_epoch, sample_id=0)
+        self._currently_visited_sample_ids.add(i)
+        return self.get_item(self.current_epoch, sample_id=i)
 
     def _epoch_zip_storage(self, epoch_id: int):
         return ZipFileStorage(
@@ -222,9 +223,10 @@ class ZipFolderDataset:
             all_macro_mirco_id_pairs.append((macro_id, micro_id))
         all_macro_mirco_id_pairs = sorted(all_macro_mirco_id_pairs)
         self._all_epoch_sample_ids[epoch_id] = all_macro_mirco_id_pairs
+        return self._all_epoch_sample_ids[epoch_id]
 
     def get_item(self, epoch_id, sample_id):
-        macro_id, micro_id =  self.epoch_sample_ids(epoch_id)[sample_id]
+        macro_id, micro_id = self.epoch_sample_ids(epoch_id)[sample_id]
         zf = self.epoch_zip_storage(epoch_id)
         d = zf["{:d}-{:d}".format(macro_id, micro_id)]
         return d
