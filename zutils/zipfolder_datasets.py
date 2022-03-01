@@ -161,7 +161,7 @@ class ZipFolderDataset:
         self._currently_visited_sample_ids = set()
 
         self.epoch_cache_size = epoch_cache_size
-        self.epoch_zip_storage = lru_cache(epoch_cache_size)(self._epoch_zip_storage)
+        self._lru_cached_epoch_zip_storage = None
         self._all_epoch_sample_ids = dict()
 
         self.use_shuffled_iter = use_shuffled_iter   # if True, it performs shuffling when iterating
@@ -214,6 +214,11 @@ class ZipFolderDataset:
             os.path.join(self.folder_path, self.epoch_filenames[epoch_id] + ".zip"), "r",
             serialization_func=dumps_single_object, deserialization_func=loads_single_object
         )
+
+    def epoch_zip_storage(self, epoch_id: int):
+        if self._lru_cached_epoch_zip_storage:
+            self._lru_cached_epoch_zip_storage = lru_cache(self.epoch_cache_size)(self._epoch_zip_storage)
+        return self._lru_cached_epoch_zip_storage(epoch_id)
 
     def epoch_sample_ids(self, epoch_id: int):
         if epoch_id in self._all_epoch_sample_ids:
