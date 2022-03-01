@@ -2,7 +2,7 @@ import random
 import sys
 import os
 import io
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Sized
 from recursive_utils.recursive_utils import *
 _ = recursive_apply
 
@@ -113,7 +113,30 @@ def order_preserving_unique(a):
     return b
 
 
-def online_shuffle(a: Iterable, window_size: int, random_generator: Optional[random.Random] = None):
+class OnlineShuffle:
+    def __init__(self, a: Iterable, window_size: int, random_generator: Optional[random.Random] = None):
+        self.a = a
+        self.window_size = window_size
+        self.random_generator = random_generator
+        if isinstance(self.a, Sized):
+            self.__class__ = OnlineShuffleWithLength
+        else:
+            self.__class__ = OnlineShuffle
+
+    def __iter__(self):
+        return _online_shuffle(self.a, window_size=self.window_size, random_generator=self.random_generator)
+
+
+class OnlineShuffleWithLength(OnlineShuffle):
+    def __len__(self):
+        self.a: Sized
+        return len(self.a)
+
+
+online_shuffle = OnlineShuffle
+
+
+def _online_shuffle(a: Iterable, window_size: int, random_generator: Optional[random.Random] = None):
 
     if window_size == 0:
         return a
@@ -128,10 +151,10 @@ def online_shuffle(a: Iterable, window_size: int, random_generator: Optional[ran
         shuffle(a)
         return a
 
-    return _online_shuffle(a, window_size, random_generator)
+    return _online_shuffle_internal(a, window_size, random_generator)
 
 
-def _online_shuffle(a: Iterable, window_size: int, random_generator: Optional[random.Random] = None):
+def _online_shuffle_internal(a: Iterable, window_size: int, random_generator: Optional[random.Random] = None):
     assert window_size > 0, "window_size must be positive"
     shuffle = (
         random_generator.shuffle if random_generator is not None
