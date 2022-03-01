@@ -185,9 +185,18 @@ class ZipFolderDataset:
             return self.num_micro_samples[self.current_epoch]
 
     def __iter__(self):
+        return self.get_iter(self.shuffled_iter)
+
+    def shuffled_iter(self):
+        return self.get_iter(True)
+
+    def sequential_iter(self):
+        return self.get_iter(False)
+
+    def get_iter(self, shuffled: bool):
         current_epoch = self.current_epoch
         sample_ids = range(len(self))
-        if self.shuffled_iter:
+        if shuffled:
             sample_ids = list(sample_ids)
             random.shuffle(sample_ids)
         for i in sample_ids:
