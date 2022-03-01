@@ -179,6 +179,7 @@ class ParallelRunIfTimeout:
             callback_func: Optional[Callable[[float], Any]] = None,
             main_func: Optional[Callable] = None
     ):
+        self._main_func = main_func
         if not time_points:
             time_points = None
         else:
@@ -186,16 +187,15 @@ class ParallelRunIfTimeout:
                 time_points = [time_points]
             time_points = sorted(time_points)
         self._time_points = time_points
-        if self._time_points is None:
-            return
         self.__overall_lock = None
         self.__start_end_call_lock = None
+        if self._time_points is None:
+            return
         self._timer_locks = deque()
         if callback_func is None:
             callback_func = print_time_lapse
         self._callback_func = callback_func
         self._thread = None
-        self._main_func = main_func
 
     @property
     def _overall_lock(self) -> threading.Lock:

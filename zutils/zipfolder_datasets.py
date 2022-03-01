@@ -135,7 +135,7 @@ def _get_and_store_samples(i, dataset_registry, zipfile_registry, zipfile_execut
 
 class ZipFolderDataset:
     # Remark: this class is not thread safe
-    def __init__(self, folder_path: str, shuffled_iter: bool = False, epoch_cache_size: int = 3):
+    def __init__(self, folder_path: str, use_shuffled_iter: bool = False, epoch_cache_size: int = 3):
         self.folder_path = folder_path
         with open(os.path.join(self.folder_path, "meta.json"), "r") as f:
             m = json.load(f)
@@ -164,7 +164,7 @@ class ZipFolderDataset:
         self.epoch_zip_storage = lru_cache(epoch_cache_size)(self._epoch_zip_storage)
         self._all_epoch_sample_ids = dict()
 
-        self.shuffled_iter = shuffled_iter   # if True, it performs shuffling when iterating
+        self.use_shuffled_iter = use_shuffled_iter   # if True, it performs shuffling when iterating
 
     @property
     def total_epochs(self) -> int:
@@ -185,7 +185,7 @@ class ZipFolderDataset:
             return self.num_micro_samples[self.current_epoch]
 
     def __iter__(self):
-        return self.get_iter(self.shuffled_iter)
+        return self.get_iter(self.use_shuffled_iter)
 
     def shuffled_iter(self):
         return self.get_iter(True)
