@@ -84,6 +84,10 @@ class ZipFileStorage:
         for k, v in zip(keys, values):
             self[k] = v
 
+    def batch_set_from_pairs(self, key_value_pairs):
+        for k, v in key_value_pairs:
+            self[k] = v
+
     def open(self, key, mode='r', *args, **kwargs):
         key = str(key)
         return self._zf.open(key + self._key2ext[key], mode, *args, **kwargs)
