@@ -128,10 +128,10 @@ class OnlineShuffle:
             self.__class__ = OnlineShuffle
 
     def __iter__(self):
-        return _online_shuffle(
+        return iter(_online_shuffle(
             self.a, window_size=self.window_size, random_generator=self.random_generator,
             buffer_progress_title=self.buffer_progress_title
-        )
+        ))
 
 
 class OnlineShuffleWithLength(OnlineShuffle):
