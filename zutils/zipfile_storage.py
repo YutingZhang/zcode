@@ -1,6 +1,8 @@
 __all__ = [
     'ZipFileStorage',
     'PickledBytes',
+    'advanced_serialize',
+    'advanced_deserialize',
 ]
 
 import zipfile
