@@ -11,6 +11,31 @@ from typing import Iterable, Optional, Callable, Any, Dict
 from functools import partial
 from z_python_utils.classes import SizedWrapperOfIterable
 
+try:
+    import pyarrow
+    _has_pyarrow = True
+except ModuleNotFoundError:
+    _has_pyarrow = False
+
+
+if _has_pyarrow:
+
+    def advanced_serialize(a):
+        try:
+            return pyarrow.serialize(a).to_buffer().to_pybytes()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            return pickle.dumps(a)
+
+    def advanced_deserialize(b):
+        try:
+            return pyarrow.deserialize(b)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            return pickle.loads(b)
+
 
 class PickledBytes(bytes):
     pass
@@ -20,6 +45,7 @@ class ZipFileStorage:
     def __init__(
             self, file: str, mode='r', *args, num_workers: int = 4,
             serialization_func: Callable[[Any], bytes] = None, deserialization_func: Callable[[bytes], Any] = None,
+            use_advanced_serialization: bool = False,
             **kwargs
     ):
         """
@@ -37,10 +63,17 @@ class ZipFileStorage:
         self._init_key2ext_mapping()
         self._prefetch_size = num_workers * 2
         self._is_closed = False
+        if use_advanced_serialization:
+            default_serialization_func = advanced_serialize
+            default_deserialization_func = advanced_deserialize
+        else:
+            default_serialization_func = partial(pickle.dumps, protocol=pickle.HIGHEST_PROTOCOL)
+            default_deserialization_func = pickle.loads
+
         self._serialization_func = (
-            serialization_func if serialization_func else partial(pickle.dumps, protocol=pickle.HIGHEST_PROTOCOL)
+            serialization_func if serialization_func else default_serialization_func
         )
-        self._deserialization_func = deserialization_func if deserialization_func else pickle.loads
+        self._deserialization_func = deserialization_func if deserialization_func else default_deserialization_func
 
     def _init_key2ext_mapping(self):
         for fn in self._zf.namelist():
