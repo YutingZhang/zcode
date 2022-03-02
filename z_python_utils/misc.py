@@ -174,8 +174,8 @@ def _online_shuffle_internal(
         else random.shuffle
     )
     window_randint = (
-        random_generator.randint if random_generator is not None
-        else random.randint
+        random_generator.randrange if random_generator is not None
+        else random.randrange
     )
     b = dict()
     s = set(range(window_size))
