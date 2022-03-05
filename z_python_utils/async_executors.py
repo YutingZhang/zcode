@@ -756,7 +756,7 @@ class ManagedCrossProcessPoolExecutor:
     manager_pool = ObjectPool()
 
     def __init__(self, executor_type: Union[Type, Callable, str], *args, **kwargs):
-        self._pid = os.getpid()
+        # self._pid = os.getpid()
         self._manager_id = self.manager_pool.add(ExecutorManager())
         self._executor: CrossProcessPoolExecutor = self.manager.Executor(executor_type, *args, **kwargs)
         results_holder_id = self.executor.get_results_holder_id()
@@ -777,7 +777,14 @@ class ManagedCrossProcessPoolExecutor:
         self.submit = None
         self.shutdown = None
         self._executor = None
-        self.manager_pool.pop(self._manager_id, None)
+        if hasattr(self, "_manager_id"):
+            try:
+                self.manager.shutdown()
+            except (KeyboardInterrupt, SystemError):
+                raise
+            except:
+                pass
+            self.manager_pool.pop(self._manager_id, None)
 
 
 MCPPoolExecutor = ManagedCrossProcessPoolExecutor
