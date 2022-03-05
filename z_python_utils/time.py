@@ -265,3 +265,10 @@ class ParallelRunIfTimeout:
         with self:
             return self._main_func(*args, **kwargs)
 
+
+class TimeoutWarning:
+    def __init__(self, title: str):
+        self.title = title
+
+    def __call__(self, t: float):
+        print("[%s]" % self.title, "Time lapsed: ", datetime.timedelta(seconds=t), file=sys.stderr)
