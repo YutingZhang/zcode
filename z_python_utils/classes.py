@@ -1,3 +1,4 @@
+import contextlib
 import inspect
 from inspect import isfunction, ismethod
 from typing import List, Iterable, Optional, Callable, Any
@@ -32,6 +33,7 @@ __all__ = [
     'ObjectPool',
     'DummyEverything',
     'global_registry',
+    'set_path_for_orphan_object_if_needed',
 ]
 
 
@@ -454,6 +456,25 @@ def get_class_fullname(a, use_filename_for_main: bool = False):
             module_name = os.path.abspath(mod.__file__) + "#"
     class_name = a.__name__
     return module_name + "." + class_name
+
+
+@contextlib.contextmanager
+def set_path_for_orphan_object_if_needed(a):
+    if hasattr(a, "____LOADED_AS_ORPHAN____") and getattr(a, "____LOADED_AS_ORPHAN____"):
+        mod = inspect.getmodule(a)
+        mod_dir = os.path.dirname(mod.__file__)
+    else:
+        mod_dir = None
+
+    need_add_dir = False
+    if mod_dir:
+        need_add_dir = mod_dir not in sys.path
+        sys.path.insert(0, mod_dir)
+
+    yield
+
+    if need_add_dir:
+        sys.path.remove(mod_dir)
 
 
 def load_obj_from_file(obj_spec: str, package_dirs: Optional[List[str]] = None):
