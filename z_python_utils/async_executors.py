@@ -237,7 +237,8 @@ class ProcessPoolExecutorWithProgressBar:
 
     def __init__(
             self, num_workers: int = 0, num_tasks: Optional[int] = None, title: Optional[str] = None,
-            use_thread_pool: bool = False, store_results: bool = False, throttling_bandwidth: int = 0
+            use_thread_pool: bool = False, store_results: bool = False, throttling_bandwidth: int = 0,
+            **kwargs
     ):
         """
         Executor that show a progress bar
@@ -258,9 +259,9 @@ class ProcessPoolExecutorWithProgressBar:
             self._executor = immediate_executor
         else:
             if use_thread_pool:
-                self._executor = futures.ThreadPoolExecutor(max_workers=num_workers)
+                self._executor = futures.ThreadPoolExecutor(max_workers=num_workers, **kwargs)
             else:
-                self._executor = futures.ProcessPoolExecutor(max_workers=num_workers)
+                self._executor = futures.ProcessPoolExecutor(max_workers=num_workers, **kwargs)
 
         if self._need_pbar:
             if self._title:
