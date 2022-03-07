@@ -474,7 +474,7 @@ def persistently_write_to_file(
                 f.write(b)
             with better_smart_open(uri, "r" + bt_mode, **kwargs) as f:
                 if verify_by_read:
-                    a = f.read(f)
+                    a = f.read()
                 if a != b:
                     raise FileContentVerificationFailed()
         except (KeyboardInterrupt, SystemExit):
