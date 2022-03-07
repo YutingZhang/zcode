@@ -453,7 +453,7 @@ class FileContentVerificationFailed(Exception):
 
 def persistently_write_to_file(
         uri: str, b: Union[bytes, str], retries: int = -1,
-        retry_interval: float = 1., verify_by_read: bool = False, **kwargs
+        retry_interval: float = 5., verify_by_read: bool = False, **kwargs
 ):
     if retries < 0:
         retries = float('inf')
@@ -474,7 +474,7 @@ def persistently_write_to_file(
                 f.write(b)
             with better_smart_open(uri, "r" + bt_mode, **kwargs) as f:
                 if verify_by_read:
-                    a = f.write(b)
+                    a = f.read(f)
                 if a != b:
                     raise FileContentVerificationFailed()
         except (KeyboardInterrupt, SystemExit):
@@ -482,14 +482,30 @@ def persistently_write_to_file(
         except Exception as e:
             successful = False
             print(
-                "persistently_write_to_file: file writing not successful: \n\t", str(e), file=sys.stderr, flush=True
+                "persistently_write_to_file: file writing not successful: ", file=sys.stderr, flush=True
             )
+            import traceback
+            traceback.print_exc()
 
         if successful:
             break
 
+        num_retried += 1
+        if num_retried <= 0:    # overflow
+            num_retried = 1
         if retry_interval > 0:
+            print(
+                " - persistently_write_to_file: wait for %g sec" % retry_interval, file=sys.stderr, flush=True
+            )
             time.sleep(retry_interval)
+            print(
+                " - persistently_write_to_file: retry", file=sys.stderr, flush=True
+            )
+
+        if num_retried:
+            print(
+                " - persistently_write_to_file: succeed", file=sys.stderr, flush=True
+            )
 
 
 def better_smart_open(uri: str, mode, **kwargs):
