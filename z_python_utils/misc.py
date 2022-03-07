@@ -193,6 +193,7 @@ def _online_shuffle_internal(
                 pbar.update(1)
         else:
             if pbar is not None:
+                pbar.update(1)
                 pbar.close()
                 pbar = None
             j = window_randint(0, window_size)
