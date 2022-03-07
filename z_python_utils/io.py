@@ -2,6 +2,7 @@ import os
 import sys
 import stat
 import logging
+import time
 from typing import List, Tuple, Callable, Union, Optional
 import shutil
 import tempfile
@@ -446,7 +447,52 @@ class _S3:
         return cls._default_s3_client
 
 
-def better_smart_open(uri, mode, **kwargs):
+class FileContentVerificationFailed(Exception):
+    pass
+
+
+def persistently_write_to_file(
+        uri: str, b: Union[bytes, str], retries: int = -1,
+        retry_interval: float = 1., verify_by_read: bool = False, **kwargs
+):
+    if retries < 0:
+        retries = float('inf')
+    num_retried = 0
+    while num_retried < retries:
+        if isinstance(b, str):
+            # text mode
+            bt_mode = ""
+        elif isinstance(b, bytes):
+            # binary mode
+            bt_mode = "b"
+        else:
+            raise ValueError('input content b should either be a str or bytes')
+
+        successful = True
+        try:
+            with better_smart_open(uri, "w" + bt_mode, **kwargs) as f:
+                f.write(b)
+            with better_smart_open(uri, "r" + bt_mode, **kwargs) as f:
+                if verify_by_read:
+                    a = f.write(b)
+                if a != b:
+                    raise FileContentVerificationFailed()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception as e:
+            successful = False
+            print(
+                "persistently_write_to_file: file writing not successful: \n\t", str(e), file=sys.stderr, flush=True
+            )
+
+        if successful:
+            break
+
+        if retry_interval > 0:
+            time.sleep(retry_interval)
+
+
+def better_smart_open(uri: str, mode, **kwargs):
     kwargs = dict(kwargs)
     if uri.startswith('s3://'):
         if "transport_params" in kwargs:
