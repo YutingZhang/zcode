@@ -510,6 +510,10 @@ def load_obj_from_file(obj_spec: str, package_dirs: Optional[List[str]] = None):
     return obj
 
 
+class _NotGiven:
+    pass
+
+
 class GlobalRegistry:
 
     _registry = dict()
@@ -517,6 +521,16 @@ class GlobalRegistry:
     @classmethod
     def registry(cls):
         return cls._registry
+
+    @classmethod
+    def get_registry(cls, identifier, prefix=_NotGiven):
+        if prefix is _NotGiven and isinstance(identifier, tuple):
+            r = cls._registry[identifier]
+        else:
+            if prefix is _NotGiven:
+                prefix = None
+            r = cls._registry[prefix, identifier]
+        return r[0]
 
     @classmethod
     def register(cls, obj, identifier=None, prefix=None, change_count: bool = True):
@@ -567,7 +581,7 @@ class _GlobalRegistryInterface:
         return GlobalRegistry(*args, **kwargs)
 
     def __getitem__(self, item):
-        return GlobalRegistry.registry()[item][0]
+        return GlobalRegistry.get_registry(item)
 
     @property
     def all(self) -> dict:
