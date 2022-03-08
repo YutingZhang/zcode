@@ -587,6 +587,20 @@ class _GlobalRegistryInterface:
     def all(self) -> dict:
         return GlobalRegistry.registry()
 
+    def keys(self):
+        return self.all.keys()
+
+    def values(self):
+        for k in self.keys():
+            yield self[k]
+
+    def items(self):
+        for k in self.keys():
+            yield k, self[k]
+
+    def __len__(self):
+        return len(self.all)
+
     @staticmethod
     def clear():
         GlobalRegistry.registry().clear()
