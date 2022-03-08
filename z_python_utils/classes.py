@@ -587,6 +587,10 @@ class _GlobalRegistryInterface:
     def all(self) -> dict:
         return GlobalRegistry.registry()
 
+    @staticmethod
+    def clear():
+        GlobalRegistry.registry().clear()
+
 
 global_registry = _GlobalRegistryInterface()
 
