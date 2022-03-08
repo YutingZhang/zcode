@@ -518,13 +518,16 @@ class HeartBeat:
         thread_dict = dict(
             running_lock=running_lock, alive_lock=alive_lock
         )
-        thread = threading.Thread(target=_heart_beat, args=(self._interval, self._callback), kwargs=dict(thread_dict))
+        thread = threading.Thread(
+            target=_heart_beat, args=(self._interval, self._callback), kwargs=dict(thread_dict),
+        )
         thread_dict["thread"] = thread
         with type(self)._all_threads_lock:
             if id(self) in type(self)._all_threads:
                 return
             type(self)._all_threads[id(self)] = thread_dict
         alive_lock.acquire()
+        thread.setDaemon(True)
         thread.start()
 
     def stop(self, finalized: bool = True):
