@@ -395,6 +395,7 @@ class _DetachableExecutorWrapperAux:
             self._thread = threading.Thread(
                 target=type(self)._garbage_collection_loop
             )
+            self._thread.setDaemon(True)
             self._thread.start()
         while not type(self).first_cycle_ready:
             pass
