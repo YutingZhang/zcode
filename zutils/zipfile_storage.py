@@ -12,6 +12,7 @@ import pickle
 from typing import Iterable, Optional, Callable, Any, Dict
 from functools import partial
 from z_python_utils.classes import SizedWrapperOfIterable
+from zutils.async_executors import SubmitterThrottle
 
 try:
     import pyarrow
@@ -48,6 +49,7 @@ class ZipFileStorage:
             self, file: str, mode='r', *args, num_workers: int = 4,
             serialization_func: Callable[[Any], bytes] = None, deserialization_func: Callable[[bytes], Any] = None,
             use_advanced_serialization: bool = False,
+            async_buffer_size: int = 256,
             **kwargs
     ):
         """
@@ -57,6 +59,7 @@ class ZipFileStorage:
         self._zf = zipfile.ZipFile(file, mode, *args, **kwargs)
         self._zipfile_executor = ThreadPoolExecutor(max_workers=1)
         self._pickle_executor = ThreadPoolExecutor(max_workers=num_workers)
+        self._pickle_submitter = SubmitterThrottle(self._pickle_executor, async_buffer_size)
         self._cache = dict()
         self._cache_access_lock = Lock()
         self._set_item_lock = Lock()
