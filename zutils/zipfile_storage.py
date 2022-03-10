@@ -152,7 +152,8 @@ class ZipFileStorage:
         return self.keys()
 
     def __len__(self):
-        return len(self._zf.infolist())
+        with self._zip_lock, self._cache_access_lock:
+            return len(self._zf.infolist()) + len(self._cache)
 
     def iterate_items(self, keys: Iterable):
         item_iterable = self._iterate_items(keys)
