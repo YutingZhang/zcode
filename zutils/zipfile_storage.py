@@ -5,6 +5,8 @@ __all__ = [
     'advanced_deserialize',
 ]
 
+import threading
+import time
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
@@ -111,7 +113,7 @@ class ZipFileStorage:
         key = str(key)
         with self._cache_access_lock:
             self._cache[key] = cached_info = [value, None]
-        r = self._pickle_executor.submit(
+        r = self._pickle_submitter.submit(
             serialize_and_add_to_zip_queue, key, value, self._zipfile_executor,
             self._zf, self._cache, self._cache_access_lock, self._zip_lock,
             self._key2ext, self._serialization_func
@@ -170,7 +172,7 @@ class ZipFileStorage:
             key = str(key)
 
             ext = self._key2ext[key]
-            prefetched[n] = key, self._pickle_executor.submit(
+            prefetched[n] = key, self._pickle_submitter.submit(
                 deserialize_from_zip,
                 key, ext, self._zf, self._cache, self._cache_access_lock, self._zip_lock,
                 self._deserialization_func,

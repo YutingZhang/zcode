@@ -200,7 +200,7 @@ class SubmitterThrottle:
         if bandwidth is None:
             bandwidth = float('inf')
         self._bandwidth = bandwidth
-        self._op_lock = threading.Lock()
+        self._op_lock = threading.RLock()
         self._pending_futures = set()
         self._task_count = 0
         self._throttle_lock = threading.Lock()
@@ -219,14 +219,17 @@ class SubmitterThrottle:
 
     def submit(self, *args, **kwargs):
         self._throttle_lock.acquire()
+        r = self._executor.submit(*args, **kwargs)
         with self._op_lock:
-            r = self._executor.submit(*args, **kwargs)
             self._pending_futures.add(self._task_count)
-            r.add_done_callback(partial(self.claim_done, task_id=self._task_count))
-            self._task_count += 1
             self._joined_lock.acquire(blocking=False)
             if len(self._pending_futures) <= self._bandwidth:
                 self._throttle_lock.release()
+            task_id = self._task_count
+            self._task_count += 1
+        # the following cannot be in the op_lock context. because when the task is done fast,
+        # the claim done will be called directly in a sync manner
+        r.add_done_callback(partial(self.claim_done, task_id=task_id))
 
     def join(self):
         with self._joined_lock:
