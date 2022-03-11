@@ -219,16 +219,16 @@ def serialize_and_add_to_zip_queue(
         key2ext: Dict[str, str],
         serialization_func: Callable[[Any], bytes]
 ):
-    if isinstance(value, int):
+    if type(value) is int:
         ext = ".int.txt"
         s = str(value).encode(encoding='UTF-8')
-    elif isinstance(value, str):
+    elif type(value) is str:
         ext = ".str.txt"
         s = value.encode(encoding='UTF-8')
-    elif isinstance(value, PickledBytes):
+    elif type(value) is PickledBytes:
         ext = ".pkl"
         s = value
-    elif isinstance(value, bytes):
+    elif type(value) is bytes:
         ext = ".bytes"
         s = value
     else:
