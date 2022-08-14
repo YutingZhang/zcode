@@ -1,7 +1,7 @@
 import contextlib
 import inspect
 from inspect import isfunction, ismethod
-from typing import List, Iterable, Optional, Callable, Any
+from typing import List, Iterable, Optional, Callable, Any, Sized
 import threading
 import uuid
 import random
@@ -331,11 +331,62 @@ class CallableObjectWrapper(ObjectWrapper):
         return self._obj(*args, **kwargs)
 
 
+class SubscriptableObjectWrapper(ObjectWrapper):
+
+    def __getitem__(self, item):
+        return self._obj[item]
+
+
+class CallableSubscriptableObjectWrapper(ObjectWrapper):
+
+    def __call__(self, *args, **kwargs):
+        return self._obj(*args, **kwargs)
+
+    def __getitem__(self, item):
+        return self._obj[item]
+
+
+class SubscriptableSizedObjectWrapper(ObjectWrapper):
+
+    def __getitem__(self, item):
+        return self._obj[item]
+
+    def __len__(self, item):
+        return self._obj[item]
+
+
+class CallableSubscriptableSizedObjectWrapper(ObjectWrapper):
+
+    def __call__(self, *args, **kwargs):
+        return self._obj(*args, **kwargs)
+
+    def __getitem__(self, item):
+        return self._obj[item]
+
+    def __len__(self, item):
+        return self._obj[item]
+
+
 def wrap_obj(obj):
-    if callable(obj):
-        return CallableObjectWrapper(obj)
+    is_callable = callable(obj)
+    is_subscriptable = hasattr(obj, '__getitem__')
+    is_sized = isinstance(obj, Sized)
+    if is_callable:
+        if is_subscriptable:
+            if is_sized:
+                return CallableSubscriptableSizedObjectWrapper(obj)
+            else:
+                return CallableSubscriptableObjectWrapper(obj)
+        else:
+            return CallableObjectWrapper(obj)
     else:
-        return ObjectWrapper(obj)
+        if is_subscriptable:
+            if is_sized:
+                return SubscriptableSizedObjectWrapper(obj)
+            else:
+                return SubscriptableObjectWrapper(obj)
+        else:
+            return ObjectWrapper(obj)
 
 
 class DummyEverything:
