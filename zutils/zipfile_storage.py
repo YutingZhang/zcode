@@ -199,12 +199,19 @@ class ZipFileStorage:
                 r.result()
 
     def close(self):
-        if self._is_closed:
-            return
-        self.join()
-        self._pickle_executor.shutdown(wait=True)
-        self._zipfile_executor.shutdown(wait=True)
-        self._zf.close()
+        if hasattr(self, '_is_closed'):
+            if self._is_closed:
+                return
+            self.join()
+            self._pickle_executor.shutdown(wait=True)
+            self._zipfile_executor.shutdown(wait=True)
+        if hasattr(self, '_zf'):
+            try:
+                self._zf.close()
+            except (SystemExit, KeyboardInterrupt):
+                raise
+            except:
+                pass
         self._is_closed = True
         self._pickle_executor = None
         self._zipfile_executor = None
