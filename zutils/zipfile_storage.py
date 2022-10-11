@@ -3,6 +3,7 @@ __all__ = [
     'PickledBytes',
     'advanced_serialize',
     'advanced_deserialize',
+    'ManagedCrossProcessZipWriter',
 ]
 
 import threading
@@ -105,6 +106,9 @@ class ZipFileStorage:
         return value
 
     def __setitem__(self, key, value):
+        self.setitem(key, value)
+
+    def set_item(self, key, value):
         with self._set_item_lock:
             self._set_item(key, value)
 
@@ -285,3 +289,38 @@ def deserialize_from_zip(
     else:
         value = deserialization_func(s)
     return value
+
+
+class ManagedCrossProcessZipWriter:
+
+    _managed_zfs: Optional[ZipFileStorage] = None
+
+    def __init__(self, file: str, mode: str = 'w', *args, **kwargs):
+        from .async_executors import MCPProcessPoolExecutor
+        self.executor = MCPProcessPoolExecutor(max_workers=1)
+        _r = self.executor.submit(
+            self._create_global_zip_storage,
+            file, mode, *args, **kwargs
+        )
+        _r.result()
+
+    @staticmethod
+    def _create_global_zip_storage(*args, **kwargs):
+        ManagedCrossProcessZipWriter._managed_zfs = ZipFileStorage(*args, **kwargs)
+
+    @staticmethod
+    def _add_remotely(key, value):
+        ManagedCrossProcessZipWriter._managed_zfs[key] = value
+
+    def add_async(self, key, value):
+        r = self.executor.submit(ManagedCrossProcessZipWriter._managed_zfs, key, value)
+        return r
+
+    def add_sync(self, key, value):
+        return self.add_async(key, value).result()
+
+    def __setitem__(self, key, value):
+        return self.add_async(key, value)
+
+    def close(self):
+        r = self.executor.submit()
