@@ -310,9 +310,9 @@ class ProcessPoolExecutorWithProgressBar:
         self._pbar = tqdm(total=total)
 
     def _close_pbar(self):
-        if not self._need_pbar:
+        if not hasattr(self, '_need_pbar') and not self._need_pbar:
             return
-        if self._pbar is not None:
+        if hasattr(self, '_pbar') and self._pbar is not None:
             self._pbar.close()
             self._pbar = None
 
@@ -340,17 +340,16 @@ class ProcessPoolExecutorWithProgressBar:
 
     def join(self):
         self._open_for_submit = False
-        if self._submitter_throttle is not None:
+        if hasattr(self, '_submitter_throttle') and self._submitter_throttle is not None:
             self._submitter_throttle.join()
         self._close_pbar()
 
     def __del__(self):
         self.join()
-        self._close_pbar()
         self.shutdown()
 
     def shutdown(self, *args, **kwargs):
-        if self._executor is not None:
+        if hasattr(self, '_executor') and self._executor is not None:
             self._executor.shutdown(*args, **kwargs)
             self._executor = None
 
