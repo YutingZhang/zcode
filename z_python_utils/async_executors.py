@@ -230,6 +230,7 @@ class SubmitterThrottle:
         # the following cannot be in the op_lock context. because when the task is done fast,
         # the claim done will be called directly in a sync manner
         r.add_done_callback(partial(self.claim_done, task_id=task_id))
+        return r
 
     def join(self):
         with self._joined_lock:
