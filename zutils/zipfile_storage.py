@@ -3,7 +3,7 @@ __all__ = [
     'PickledBytes',
     'advanced_serialize',
     'advanced_deserialize',
-    'ManagedCrossProcessZipWriter',
+    'ManagedCrossProcessZipStorageWriter',
 ]
 
 import threading
@@ -291,7 +291,7 @@ def deserialize_from_zip(
     return value
 
 
-class ManagedCrossProcessZipWriter:
+class ManagedCrossProcessZipStorageWriter:
 
     _managed_zfs: Optional[ZipFileStorage] = None
 
@@ -306,14 +306,14 @@ class ManagedCrossProcessZipWriter:
 
     @staticmethod
     def _create_global_zip_storage(*args, **kwargs):
-        ManagedCrossProcessZipWriter._managed_zfs = ZipFileStorage(*args, **kwargs)
+        ManagedCrossProcessZipStorageWriter._managed_zfs = ZipFileStorage(*args, **kwargs)
 
     @staticmethod
     def _add_remotely(key, value):
-        ManagedCrossProcessZipWriter._managed_zfs[key] = value
+        ManagedCrossProcessZipStorageWriter._managed_zfs[key] = value
 
     def add_async(self, key, value):
-        r = self.executor.submit(ManagedCrossProcessZipWriter._add_remotely, key, value)
+        r = self.executor.submit(ManagedCrossProcessZipStorageWriter._add_remotely, key, value)
         return r
 
     def add_sync(self, key, value):
