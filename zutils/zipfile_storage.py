@@ -274,7 +274,7 @@ def deserialize_from_zip(
         s = read_from_zip(key, ext, zf, zip_lock)
     else:
         # make sure to do unzip in a single thread
-        r = zipfile_executor.submit(zf.read, key, ext, zf, zip_lock)
+        r = zipfile_executor.submit(read_from_zip, key, ext, zf, zip_lock)
         s = r.result()
     if ext == ".int.txt":
         value = int(s.decode(encoding='UTF-8'))
