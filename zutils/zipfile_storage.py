@@ -106,7 +106,7 @@ class ZipFileStorage:
         return value
 
     def __setitem__(self, key, value):
-        self.setitem(key, value)
+        self.set_item(key, value)
 
     def set_item(self, key, value):
         with self._set_item_lock:
@@ -313,7 +313,7 @@ class ManagedCrossProcessZipWriter:
         ManagedCrossProcessZipWriter._managed_zfs[key] = value
 
     def add_async(self, key, value):
-        r = self.executor.submit(ManagedCrossProcessZipWriter._managed_zfs, key, value)
+        r = self.executor.submit(ManagedCrossProcessZipWriter._add_remotely, key, value)
         return r
 
     def add_sync(self, key, value):
