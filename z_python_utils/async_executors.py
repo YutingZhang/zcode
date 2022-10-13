@@ -741,7 +741,7 @@ ExecutorBaseManager.register(
 )
 ExecutorBaseManager.register(
     "ExecutorResultFuture", CrossProcessFuture,
-    exposed=['result']
+    exposed=['result', 'set_result']
 )
 ExecutorBaseManager.register(
     "ExecutorResultsHolderRemote", _CrossProcessResultsHolderRemote,

@@ -330,3 +330,5 @@ class ManagedCrossProcessZipStorageWriter:
     def close(self):
         r = self.executor.submit(ManagedCrossProcessZipStorageWriter._close_remotely)
         r.result()
+        self.executor.shutdown()
+        self.executor = None
