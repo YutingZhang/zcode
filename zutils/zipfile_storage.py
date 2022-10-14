@@ -52,6 +52,7 @@ class ZipFileStorage:
             self, file: str, mode='r', *args, num_workers: int = 4,
             serialization_func: Callable[[Any], bytes] = None, deserialization_func: Callable[[bytes], Any] = None,
             use_advanced_serialization: bool = False,
+            pickle_protocol: Optional[int] = pickle.HIGHEST_PROTOCOL,
             async_buffer_size: int = 256,
             **kwargs
     ):
@@ -75,7 +76,7 @@ class ZipFileStorage:
             default_serialization_func = advanced_serialize
             default_deserialization_func = advanced_deserialize
         else:
-            default_serialization_func = partial(pickle.dumps, protocol=pickle.HIGHEST_PROTOCOL)
+            default_serialization_func = partial(pickle.dumps, protocol=pickle_protocol)
             default_deserialization_func = pickle.loads
 
         self._serialization_func = (
