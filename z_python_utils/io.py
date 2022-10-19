@@ -168,15 +168,19 @@ class RemoveFilesWhenExit:
         if self.paths is None:
             return
         for p in self.paths:
-            try:
-                shutil.rmtree(os.path.abspath(p))
-            except (KeyboardInterrupt, SystemExit):
-                raise
-            except:
-                pass
+            rm_f(p)
 
     def abort(self):
         self.paths = []
+
+
+def rm_f(p: str):
+    try:
+        shutil.rmtree(os.path.abspath(p))
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except:
+        pass
 
 
 def remove_files_when_finish(func):
