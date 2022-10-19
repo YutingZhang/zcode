@@ -1,4 +1,4 @@
-__all__ = ['RemoteFile', 'better_smart_open']
+__all__ = ['RemoteOrLocalFile', 'better_smart_open']
 
 
 import os
@@ -6,13 +6,14 @@ from z_python_utils.os import run_system
 from tempfile import mkdtemp
 from z_python_utils.io import rm_f, better_smart_open
 import re
-from typing import Optional
+from typing import Optional, List
 import logging
+import zipfile
 
 logger = logging.getLogger(__name__)
 
 
-class RemoteFile:
+class RemoteOrLocalFile:
     def __init__(self, path: str, tmp_dir: str = '/tmp'):
         self.path = path
         self.tmp_dir = tmp_dir
@@ -31,7 +32,7 @@ class RemoteFile:
         self.count += 1
         if self.local_dir is None and self.is_remote_path:
             logger.info('Pulling remote file(s): ' + self.path)
-            self.local_dir = mkdtemp(prefix='RemoteFile', dir=self.tmp_dir)
+            self.local_dir = mkdtemp(prefix='RemoteOrLocalFile', dir=self.tmp_dir)
             if self.path.startswith('s3://'):
                 run_system("aws cp --recursive '{:s}' '{:s}'".format(
                     self.path, os.path.join(self.local_dir, self.filename)
@@ -62,3 +63,60 @@ class RemoteFile:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.release_once()
+
+
+class FolderOrZipReader:
+    def __init__(self, path: str):
+        self.path = path
+        self.zf = None
+        self.zf_all_fn = None
+        if path.endswith('.zip'):
+            self.zf = zipfile.ZipFile(path, 'r')
+            self.zf_all_fn = self.zf.namelist()
+            self.path_type = 'zip'
+        else:
+            self.path_type = 'folder'
+
+        self.root_folder = FolderOrZipReaderFolder(self)
+        self.chdir = self.root_folder.chdir
+        self.listdir = self.root_folder.listdir
+
+
+class FolderOrZipReaderFolder:
+    def __init__(self, fozr: FolderOrZipReader, subfolder: str = ''):
+        self._fozr = fozr
+        self._subfolder = os.path.abspath(os.path.join('/', subfolder))[1:]
+
+    def chdir(self, subpath: str):
+        return type(self)(self._fozr, os.path.join(self._subfolder, subpath))
+
+    @property
+    def path(self) -> str:
+        return os.path.join(self._fozr.path, self._subfolder)
+
+    @property
+    def path_type(self) -> str:
+        return self._fozr.path_type
+
+    def listdir(self) -> List[str]:
+        if self._fozr.path_type == 'folder':
+            files_in_this_folder = os.listdir(os.path.join(self._fozr.path, self._subfolder))
+        elif self._fozr.path_type == 'zip':
+            if not self._subfolder:
+                candidate_fns = self._fozr.zf_all_fn
+            else:
+                _fn_prefix = self._subfolder + '/'
+                candidate_fns = [_x[len(_fn_prefix):] for _x in self._fozr.zf_all_fn if _x.startswith(_fn_prefix)]
+            files_in_this_folder = []
+            for _x in candidate_fns:
+                _y = _x.split('/')
+                if len(_y) == 1 or (len(_y) == 2 and not _y[1]):
+                    files_in_this_folder.append(_x)
+        else:
+            raise ValueError('Unsupported path type')
+
+        return files_in_this_folder
+
+
+def local_or_zip_as_folder(path: str) -> FolderOrZipReaderFolder:
+    return FolderOrZipReader(path).chdir('')
