@@ -1,4 +1,8 @@
-__all__ = ['RemoteOrLocalFile', 'better_smart_open']
+__all__ = [
+    'RemoteOrLocalFile', 'better_smart_open',
+    'local_or_zip_as_folder',
+    'FolderOrZipReader', 'FolderOrZipReaderFolder',
+]
 
 
 import os
@@ -9,6 +13,7 @@ import re
 from typing import Optional, List
 import logging
 import zipfile
+import codecs
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +86,25 @@ class FolderOrZipReader:
         self.chdir = self.root_folder.chdir
         self.listdir = self.root_folder.listdir
 
+    def open(self, filename: str, mode: str = 'r', encoding: Optional[str] = 'utf-8'):
+        filename = os.path.abspath(os.path.join('/', filename))[1:]
+        if mode == 'b':
+            mode = 'rb'
+        elif not mode:
+            mode = 'r'
+        assert mode in {'r', 'rb'}, 'must be a read mode'
+        if self.path_type == 'folder':
+            return open(os.path.join(self.path, filename), mode=mode, encoding=encoding)
+        elif self.path_type == 'zip':
+            f_binary = self.zf.open(filename, mode='r')
+            if mode == 'r':
+                f = codecs.iterdecode(f_binary, 'utf-8')
+            else:
+                f = f_binary
+            return f
+        else:
+            raise ValueError('Unsupported path type')
+
 
 class FolderOrZipReaderFolder:
     def __init__(self, fozr: FolderOrZipReader, subfolder: str = ''):
@@ -116,6 +140,9 @@ class FolderOrZipReaderFolder:
             raise ValueError('Unsupported path type')
 
         return files_in_this_folder
+    
+    def open(self, filename: str):
+        return self._fozr.open(os.path.join(self._subfolder, filename))
 
 
 def local_or_zip_as_folder(path: str) -> FolderOrZipReaderFolder:
