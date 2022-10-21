@@ -101,8 +101,13 @@ class FolderOrZipReader:
             mode = 'r'
         assert mode in {'r', 'rb'}, 'must be a read mode'
         if self.path_type == 'folder':
-            return open(os.path.join(self.path, filename), mode=mode, encoding=encoding)
+            full_fn = os.path.join(self.path, filename)
+            if os.path.isfile(full_fn):
+                raise FileNotFoundError
+            return open(full_fn, mode=mode, encoding=encoding)
         elif self.path_type == 'zip':
+            if filename not in self.zf_all_fn:
+                raise FileNotFoundError
             f_binary = self.zf.open(filename, mode='r')
             if mode == 'r':
                 f = codecs.iterdecode(f_binary, 'utf-8')
