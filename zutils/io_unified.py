@@ -14,9 +14,7 @@ from typing import Optional, List
 import logging
 import zipfile
 import codecs
-import fnmatch
-import glob
-from pathlib import Path
+from collections import deque
 
 logger = logging.getLogger(__name__)
 
@@ -155,11 +153,29 @@ class FolderOrZipReaderFolder:
 
         return files_in_this_folder
 
-    def glob(self, pathname: str):
+    def _all_fn_for_folder(self, realpath_cache: Optional[set] = None) -> List[str]:
+        fns = deque()
+        sub_fns = self.listdir()
+
+        if realpath_cache is None:
+            realpath_cache = {}
+        for x in sub_fns:
+            x_realpath = os.path.realpath(os.path.join(self.path, x))
+            if x_realpath in realpath_cache:
+                continue
+            realpath_cache.add(x_realpath)
+            fns.append(x)
+            if x.endswith('/'):
+                fns.extend(
+                    os.path.join(x, y) for y in self.chdir(x)._all_fn_for_folder(realpath_cache=realpath_cache)
+                )
+        return list(fns)
+
+    def all_filenames(self) -> List[str]:
         if self._fozr.path_type == 'folder':
-            return glob.glob(pathname, root_dir=self.path)
+            return self._all_fn_for_folder()
         elif self._fozr.path_type == 'zip':
-            return fnmatch.filter(self._all_fn_for_zip(), pathname)
+            return self._all_fn_for_zip()
         else:
             raise ValueError('Unsupported path type')
 
