@@ -14,6 +14,9 @@ from typing import Optional, List
 import logging
 import zipfile
 import codecs
+import fnmatch
+import glob
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +128,14 @@ class FolderOrZipReaderFolder:
     def path_type(self) -> str:
         return self._fozr.path_type
 
+    def _all_fn_for_zip(self):
+        if not self._subfolder:
+            fns = self._fozr.zf_all_fn
+        else:
+            _fn_prefix = self._subfolder + '/'
+            fns = [_x[len(_fn_prefix):] for _x in self._fozr.zf_all_fn if _x.startswith(_fn_prefix)]
+        return fns
+
     def listdir(self) -> List[str]:
         if self._fozr.path_type == 'folder':
             subfolder_full_path = os.path.join(self._fozr.path, self._subfolder)
@@ -133,11 +144,7 @@ class FolderOrZipReaderFolder:
                 for _x in os.listdir(subfolder_full_path)
             ]
         elif self._fozr.path_type == 'zip':
-            if not self._subfolder:
-                candidate_fns = self._fozr.zf_all_fn
-            else:
-                _fn_prefix = self._subfolder + '/'
-                candidate_fns = [_x[len(_fn_prefix):] for _x in self._fozr.zf_all_fn if _x.startswith(_fn_prefix)]
+            candidate_fns = self._all_fn_for_zip()
             files_in_this_folder = []
             for _x in candidate_fns:
                 _y = _x.split('/')
@@ -147,7 +154,15 @@ class FolderOrZipReaderFolder:
             raise ValueError('Unsupported path type')
 
         return files_in_this_folder
-    
+
+    def glob(self, pathname: str):
+        if self._fozr.path_type == 'folder':
+            return glob.glob(pathname, root_dir=self.path)
+        elif self._fozr.path_type == 'zip':
+            return fnmatch.filter(self._all_fn_for_zip(), pathname)
+        else:
+            raise ValueError('Unsupported path type')
+
     def open(self, filename: str):
         return self._fozr.open(os.path.join(self._subfolder, filename))
 
