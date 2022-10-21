@@ -659,6 +659,10 @@ class _GlobalRegistryInterface:
     def __delitem__(self, key):
         return GlobalRegistry.fully_deregister(key)
 
+    @staticmethod
+    def new_registry(obj=None):
+        return GlobalRegistry.register(obj=obj)
+
     @property
     def all(self) -> dict:
         return GlobalRegistry.registry()
