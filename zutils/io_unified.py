@@ -158,7 +158,7 @@ class FolderOrZipReaderFolder:
         sub_fns = self.listdir()
 
         if realpath_cache is None:
-            realpath_cache = {}
+            realpath_cache = set()
         for x in sub_fns:
             x_realpath = os.path.realpath(os.path.join(self.path, x))
             if x_realpath in realpath_cache:
