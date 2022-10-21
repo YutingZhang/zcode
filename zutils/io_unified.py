@@ -47,7 +47,7 @@ class RemoteOrLocalFile:
                 else:
                     raise ValueError('unsupported remote protocol')
             else:
-                self.local_dir = self.path
+                self.local_dir = os.path.dirname(self.path)
         return self._local_path
 
     def release_once(self):
