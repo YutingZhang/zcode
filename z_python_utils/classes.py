@@ -576,12 +576,22 @@ class GlobalRegistry:
     @classmethod
     def get_registry(cls, identifier, prefix=_NotGiven):
         if prefix is _NotGiven and isinstance(identifier, tuple):
-            r = cls._registry[identifier]
+            prefix, identifier = identifier
         else:
             if prefix is _NotGiven:
                 prefix = None
-            r = cls._registry[prefix, identifier]
+        r = cls._registry[prefix, identifier]
         return r[0]
+
+    @classmethod
+    def set_registry(cls, identifier, obj, prefix=_NotGiven):
+        if prefix is _NotGiven and isinstance(identifier, tuple):
+            prefix, identifier = identifier
+        else:
+            if prefix is _NotGiven:
+                prefix = None
+        cls.register(obj, identifier=identifier, prefix=prefix, change_count=(prefix, identifier) not in cls._registry)
+        return cls.get_registry(identifier=identifier, prefix=prefix)
 
     @classmethod
     def register(cls, obj, identifier=None, prefix=None, change_count: bool = True):
@@ -590,7 +600,9 @@ class GlobalRegistry:
             while (prefix, identifier) in cls._registry:
                 identifier = str(uuid.uuid4())
         if (prefix, identifier) not in cls._registry:
-            cls._registry[prefix, identifier] = [obj, 0]
+            cls._registry[prefix, identifier] = [None, 0]
+        if obj is not None:
+            cls._registry[prefix, identifier] = obj
         if change_count:
             cls._registry[prefix, identifier][1] += 1
         return prefix, identifier
@@ -598,10 +610,17 @@ class GlobalRegistry:
     @classmethod
     def deregister(cls, prefixed_identifier, change_count: bool = True):
         prefix, identifier = prefixed_identifier
+        if (prefix, identifier) not in cls._registry:
+            return
         if change_count:
             cls._registry[prefix, identifier][1] -= 1
         if cls._registry[prefix, identifier][1] <= 0:
             cls._registry.pop((prefix, identifier))
+
+    @classmethod
+    def fully_deregister(cls, prefixed_identifier):
+        if prefixed_identifier in cls._registry:
+            cls._registry.pop(prefixed_identifier)
 
     def __init__(
             self, obj, identifier=None, prefix=None,
@@ -633,6 +652,12 @@ class _GlobalRegistryInterface:
 
     def __getitem__(self, item):
         return GlobalRegistry.get_registry(item)
+
+    def __setitem__(self, key, value):
+        return GlobalRegistry.set_registry(identifier=key, obj=value)
+
+    def __delitem__(self, key):
+        return GlobalRegistry.fully_deregister(key)
 
     @property
     def all(self) -> dict:
