@@ -207,9 +207,9 @@ class ZipFileStorage:
         if hasattr(self, '_is_closed'):
             if self._is_closed:
                 return
-            self.join()
-            self._pickle_executor.shutdown(wait=True)
-            self._zipfile_executor.shutdown(wait=True)
+        self.join()
+        self._pickle_executor.shutdown(wait=True)
+        self._zipfile_executor.shutdown(wait=True)
         if hasattr(self, '_zf'):
             try:
                 self._zf.close()

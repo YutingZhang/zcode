@@ -102,7 +102,7 @@ class FolderOrZipReader:
         assert mode in {'r', 'rb'}, 'must be a read mode'
         if self.path_type == 'folder':
             full_fn = os.path.join(self.path, filename)
-            if os.path.isfile(full_fn):
+            if not os.path.isfile(full_fn):
                 raise FileNotFoundError
             return open(full_fn, mode=mode, encoding=encoding)
         elif self.path_type == 'zip':
