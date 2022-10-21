@@ -307,18 +307,15 @@ class ManagedCrossProcessZipStorageWriter:
 
     @staticmethod
     def _create_global_zip_storage(*args, **kwargs):
-        print('---- _create_global_zip_storage:', os.getpid())
         ManagedCrossProcessZipStorageWriter._managed_zfs = ZipFileStorage(*args, **kwargs)
 
     @staticmethod
     def _close_remotely():
-        print('---- _close_remotely:', os.getpid())
         ManagedCrossProcessZipStorageWriter._managed_zfs.close()
         ManagedCrossProcessZipStorageWriter._managed_zfs = None
 
     @staticmethod
     def _add_remotely(key, value):
-        print('---- _add_remotely:', os.getpid())
         ManagedCrossProcessZipStorageWriter._managed_zfs[key] = value
 
     def add_async(self, key, value):
