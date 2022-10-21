@@ -583,26 +583,28 @@ class GlobalRegistry:
         r = cls._registry[prefix, identifier]
         return r[0]
 
-    @classmethod
-    def set_registry(cls, identifier, obj, prefix=_NotGiven):
+    @staticmethod
+    def canonicalize_prefix_and_identifier(identifier, prefix=_NotGiven):
         if prefix is _NotGiven and isinstance(identifier, tuple):
             prefix, identifier = identifier
         else:
             if prefix is _NotGiven:
                 prefix = None
+        return prefix, identifier
+
+    @classmethod
+    def set_registry(cls, identifier, obj, prefix=_NotGiven):
+        prefix, identifier = cls.canonicalize_prefix_and_identifier(identifier=identifier, prefix=prefix)
         cls.register(obj, identifier=identifier, prefix=prefix, change_count=(prefix, identifier) not in cls._registry)
         return cls.get_registry(identifier=identifier, prefix=prefix)
 
     @classmethod
     def register(cls, obj, identifier=None, prefix=None, change_count: bool = True):
-        if identifier is None:
-            identifier = str(uuid.uuid4())
-            while (prefix, identifier) in cls._registry:
-                identifier = str(uuid.uuid4())
+        prefix, identifier = cls.canonicalize_prefix_and_identifier(identifier=identifier, prefix=prefix)
         if (prefix, identifier) not in cls._registry:
             cls._registry[prefix, identifier] = [None, 0]
         if obj is not None:
-            cls._registry[prefix, identifier] = obj
+            cls._registry[prefix, identifier][0] = obj
         if change_count:
             cls._registry[prefix, identifier][1] += 1
         return prefix, identifier
@@ -666,6 +668,9 @@ class _GlobalRegistryInterface:
     @property
     def all(self) -> dict:
         return GlobalRegistry.registry()
+
+    def has(self, *args) -> bool:
+        return GlobalRegistry.canonicalize_prefix_and_identifier(*args) in self.all
 
     def keys(self):
         return self.all.keys()

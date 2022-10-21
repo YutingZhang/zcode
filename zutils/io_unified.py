@@ -2,19 +2,22 @@ __all__ = [
     'RemoteOrLocalFile', 'better_smart_open',
     'local_or_zip_as_folder',
     'FolderOrZipReader', 'FolderOrZipReaderFolder',
+    'NotJsonOrPickle',
 ]
 
 
 import os
 from z_python_utils.os import run_system
 from tempfile import mkdtemp
-from z_python_utils.io import rm_f, better_smart_open
+from z_python_utils.io import rm_f, better_smart_open, NotJsonOrPickle
 import re
 from typing import Optional, List
 import logging
 import zipfile
 import codecs
 from collections import deque
+import json
+import pickle
 
 logger = logging.getLogger(__name__)
 
@@ -179,8 +182,19 @@ class FolderOrZipReaderFolder:
         else:
             raise ValueError('Unsupported path type')
 
-    def open(self, filename: str):
-        return self._fozr.open(os.path.join(self._subfolder, filename))
+    def open(self, fn: str, mode: str = 'r', encoding: Optional[str] = 'utf-8'):
+        return self._fozr.open(os.path.join(self._subfolder, fn), mode=mode, encoding=encoding)
+
+    def load_json_or_pickle(self, fn: str):
+        if fn.endswith('.json'):
+            with self.open(fn, 'r') as f:
+                a = json.load(f)
+        elif fn.endswith('.pkl'):
+            with self.open(fn, 'rb') as f:
+                a = pickle.load(f)
+        else:
+            raise NotJsonOrPickle
+        return a
 
 
 def local_or_zip_as_folder(path: str) -> FolderOrZipReaderFolder:

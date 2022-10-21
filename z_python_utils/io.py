@@ -23,6 +23,22 @@ except ModuleNotFoundError:
     pass
 
 
+class NotJsonOrPickle(Exception):
+    pass
+
+
+def load_json_or_pickle(fn: str):
+    if fn.endswith('.json'):
+        with open(fn, 'r') as f:
+            a = json.load(f)
+    elif fn.endswith('.pkl'):
+        with open(fn, 'rb') as f:
+            a = pickle.load(f)
+    else:
+        raise NotJsonOrPickle
+    return a
+
+
 def path_full_split(p):
     s = list()
     a = p
