@@ -6,6 +6,7 @@ __all__ = [
     'ManagedCrossProcessZipStorageWriter',
 ]
 
+import os
 import threading
 import time
 import zipfile
@@ -204,9 +205,8 @@ class ZipFileStorage:
                 r.result()
 
     def close(self):
-        if hasattr(self, '_is_closed'):
-            if self._is_closed:
-                return
+        if not hasattr(self, '_is_closed') or self._is_closed:
+            return
         self.join()
         self._pickle_executor.shutdown(wait=True)
         self._zipfile_executor.shutdown(wait=True)
@@ -307,23 +307,23 @@ class ManagedCrossProcessZipStorageWriter:
 
     @staticmethod
     def _create_global_zip_storage(*args, **kwargs):
+        print('---- _create_global_zip_storage:', os.getpid())
         ManagedCrossProcessZipStorageWriter._managed_zfs = ZipFileStorage(*args, **kwargs)
 
     @staticmethod
     def _close_remotely():
+        print('---- _close_remotely:', os.getpid())
         ManagedCrossProcessZipStorageWriter._managed_zfs.close()
         ManagedCrossProcessZipStorageWriter._managed_zfs = None
 
     @staticmethod
     def _add_remotely(key, value):
+        print('---- _add_remotely:', os.getpid())
         ManagedCrossProcessZipStorageWriter._managed_zfs[key] = value
 
     def add_async(self, key, value):
         r = self.executor.submit(ManagedCrossProcessZipStorageWriter._add_remotely, key, value)
         return r
-
-    def add_sync(self, key, value):
-        return self.add_async(key, value).result()
 
     def __setitem__(self, key, value):
         return self.add_async(key, value)
