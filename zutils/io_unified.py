@@ -104,7 +104,10 @@ class FolderOrZipReader:
             full_fn = os.path.join(self.path, filename)
             if not os.path.isfile(full_fn):
                 raise FileNotFoundError
-            return open(full_fn, mode=mode, encoding=encoding)
+            if 'b' in mode:
+                return open(full_fn, mode=mode)
+            else:
+                return open(full_fn, mode=mode, encoding=encoding)
         elif self.path_type == 'zip':
             if filename not in self.zf_all_fn:
                 raise FileNotFoundError
