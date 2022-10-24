@@ -210,13 +210,15 @@ class ZipFileStorage:
         self.join()
         self._pickle_executor.shutdown(wait=True)
         self._zipfile_executor.shutdown(wait=True)
-        if hasattr(self, '_zf'):
-            try:
-                self._zf.close()
-            except (SystemExit, KeyboardInterrupt):
-                raise
-            except:
-                pass
+        if hasattr(self, '_zf') and self._zf is not None:
+            self._zf.close()
+            self._zf = None
+            #try:
+            #    self._zf.close()
+            #except (SystemExit, KeyboardInterrupt):
+            #    raise
+            #except:
+            #    pass
         self._is_closed = True
         self._pickle_executor = None
         self._zipfile_executor = None
@@ -311,6 +313,8 @@ class ManagedCrossProcessZipStorageWriter:
 
     @staticmethod
     def _close_remotely():
+        if ManagedCrossProcessZipStorageWriter._managed_zfs is None:
+            return
         ManagedCrossProcessZipStorageWriter._managed_zfs.close()
         ManagedCrossProcessZipStorageWriter._managed_zfs = None
 
