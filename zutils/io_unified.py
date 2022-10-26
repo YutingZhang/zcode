@@ -42,7 +42,7 @@ class RemoteOrLocalFile:
         if self.local_dir is None:
             if self.is_remote_path:
                 logger.info('Pulling remote file(s): ' + self.path)
-                self.local_dir = mkdtemp(prefix='RemoteOrLocalFile', dir=self.tmp_dir)
+                self.local_dir = mkdtemp(prefix='RemoteOrLocalFile-', dir=self.tmp_dir)
                 if self.path.startswith('s3://'):
                     run_system("aws cp --recursive '{:s}' '{:s}'".format(
                         self.path, os.path.join(self.local_dir, self.filename)
