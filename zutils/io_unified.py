@@ -80,10 +80,11 @@ class RemoteOrLocalFile:
 class FolderOrZipReader:
     def __init__(self, path: str):
         self.path = path
-        self.zf = None
+        self._is_zip = False
+        self._zf = None
         self.zf_all_fn = None
         if path.endswith('.zip'):
-            self.zf = zipfile.ZipFile(path, 'r')
+            self._is_zip = True
             self.zf_all_fn = self.zf.namelist()
             self.path_type = 'zip'
         else:
@@ -92,6 +93,18 @@ class FolderOrZipReader:
         self.root_folder = FolderOrZipReaderFolder(self)
         self.chdir = self.root_folder.chdir
         self.listdir = self.root_folder.listdir
+
+    def __getstate__(self):     # pickle safe implementation
+        d = dict(self.__dict__)
+        d['_zf'] = None
+        return d
+
+    @property
+    def zf(self) -> zipfile.ZipFile:
+        if self._zf is None:
+            assert self._is_zip, 'not a zip file'
+            self._zf = zipfile.ZipFile(self.path, 'r')
+        return self.zf
 
     def open(self, filename: str, mode: str = 'r', encoding: Optional[str] = 'utf-8'):
         filename = os.path.abspath(os.path.join('/', filename))[1:]
