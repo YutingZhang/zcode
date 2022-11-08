@@ -77,6 +77,10 @@ class RemoteOrLocalFile:
         self.release_once()
 
 
+def _canonicalize_filename_in_folder(fn: str) -> str:
+    return os.path.abspath(os.path.join('/', fn))[1:]
+
+
 class FolderOrZipReader:
     def __init__(self, path: str):
         self.path = path
@@ -105,6 +109,26 @@ class FolderOrZipReader:
             assert self._is_zip, 'not a zip file'
             self._zf = zipfile.ZipFile(self.path, 'r')
         return self.zf
+
+    def is_file(self, fn: str):
+        fn = _canonicalize_filename_in_folder(fn)
+        if self._is_zip:
+            return fn in self.zf_all_fn
+        else:
+            return os.path.isfile(os.path.join(self.path, fn))
+
+    def is_dir(self, fn: str):
+        fn = _canonicalize_filename_in_folder(fn)
+        if self._is_zip:
+            return (fn + '/') in self.zf_all_fn
+        else:
+            return os.path.isdir(os.path.join(self.path, fn))
+
+    def exists(self, fn: str):
+        if self._is_zip:
+            return self.is_file(fn) or self.is_dir(fn)
+        else:
+            return os.path.exists(os.path.join(self.path, fn))
 
     def open(self, filename: str, mode: str = 'r', encoding: Optional[str] = 'utf-8'):
         filename = os.path.abspath(os.path.join('/', filename))[1:]
@@ -202,6 +226,13 @@ class FolderOrZipReaderFolder:
             return self._all_fn_for_zip()
         else:
             raise ValueError('Unsupported path type')
+
+    def is_file(self, fn: str):
+        pass
+
+    def is_dir(self, fn: str):
+        pass
+
 
     def open(self, fn: str, mode: str = 'r', encoding: Optional[str] = 'utf-8'):
         return self._fozr.open(os.path.join(self._subfolder, fn), mode=mode, encoding=encoding)
