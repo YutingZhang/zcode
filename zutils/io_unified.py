@@ -228,11 +228,13 @@ class FolderOrZipReaderFolder:
             raise ValueError('Unsupported path type')
 
     def is_file(self, fn: str):
-        pass
+        return self._fozr.is_file(os.path.join(self._subfolder, fn))
 
     def is_dir(self, fn: str):
-        pass
+        return self._fozr.is_dir(os.path.join(self._subfolder, fn))
 
+    def exists(self, fn: str):
+        return self._fozr.exists(os.path.join(self._subfolder, fn))
 
     def open(self, fn: str, mode: str = 'r', encoding: Optional[str] = 'utf-8'):
         return self._fozr.open(os.path.join(self._subfolder, fn), mode=mode, encoding=encoding)
@@ -244,6 +246,10 @@ class FolderOrZipReaderFolder:
         elif fn.endswith('.pkl'):
             with self.open(fn, 'rb') as f:
                 a = pickle.load(f)
+        elif self.is_file(fn + '.json'):
+            self.load_json_or_pickle(fn + '.json')
+        elif self.is_file(fn + '.pkl'):
+            self.load_json_or_pickle(fn + '.pkl')
         else:
             raise NotJsonOrPickle
         return a
