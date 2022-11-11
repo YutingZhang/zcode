@@ -13,5 +13,7 @@ def replace_token_with_indent(template: str, token: str, content: str):
         if t.startswith(indent_token):
             tl[i] = t.replace(indent_token, indent)
         else:
-            indent = t[:-len(t.lstrip())]
+            st = t.lstrip()
+            if st:
+                indent = t[:-len(st)]
     return "\n".join(tl)
