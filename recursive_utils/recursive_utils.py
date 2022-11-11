@@ -168,13 +168,10 @@ def _recursive_apply(condition_func, func, *args, backup_func=None):
         else:
             return my_args
 
-    if condition_func is None:
-        condition_func = recursive_generic_condition_func
-
     if backup_func is None:
         backup_func = generic_backup_func
 
-    if condition_func(*args):
+    if condition_func is not None and condition_func(*args):
         return func(*args)
 
     cras = CustomRecursiveApplyScope.last_element
@@ -186,6 +183,9 @@ def _recursive_apply(condition_func, func, *args, backup_func=None):
                 condition_func, func, *args, backup_func=backup_func
             )
         cras = cras.previous_element
+
+    if condition_func is None and recursive_generic_condition_func(*args):
+        return func(*args)
 
     if not _is_prevented_from_recursive(args[0]):
         if isinstance(args[0], (list, tuple)):
