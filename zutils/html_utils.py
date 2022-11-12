@@ -7,7 +7,8 @@ __all__ = [
 def replace_token_with_indent(template: str, token: str, content: str):
     indent_token = '<%%INDENT%%>'
     c = f"\n{indent_token}".join(content.split('\n'))
-    tl = c.split('\n')
+    all_content = template.replace(token, c)
+    tl = all_content.split('\n')
     indent = ''
     for i, t in enumerate(tl):
         if t.startswith(indent_token):
