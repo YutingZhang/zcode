@@ -6,7 +6,7 @@ __all__ = [
 
 def replace_token_with_indent(template: str, token: str, content: str):
     indent_token = '<%%INDENT%%>'
-    c = f"\n{indent_token}".join(content.split('\n'))
+    c = indent_token + f"\n{indent_token}".join(content.split('\n'))
     all_content = template.replace(token, c)
     tl = all_content.split('\n')
     indent = ''
@@ -15,6 +15,7 @@ def replace_token_with_indent(template: str, token: str, content: str):
             tl[i] = t.replace(indent_token, indent)
         else:
             st = t.lstrip()
-            if st:
+            if indent_token in st:
                 indent = t[:-len(st)]
+                tl[i] = t.replace(indent_token, '')
     return "\n".join(tl)
