@@ -108,7 +108,7 @@ class FolderOrZipReader:
         if self._zf is None:
             assert self._is_zip, 'not a zip file'
             self._zf = zipfile.ZipFile(self.path, 'r')
-        return self.zf
+        return self._zf
 
     def is_file(self, fn: str):
         fn = _canonicalize_filename_in_folder(fn)
