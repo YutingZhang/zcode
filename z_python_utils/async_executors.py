@@ -13,6 +13,7 @@ import random
 import multiprocessing.managers as mpm
 from z_python_utils.classes import ObjectPool
 from z_python_utils.functions import run_and_print_trackback_if_exception
+from z_python_utils.time import PeriodicRun
 
 
 # FIXME: this is a money patch
@@ -274,11 +275,8 @@ class ProcessPoolExecutorWithProgressBar:
                 print(f"Run tasks ({self._num_workers} {'thread' if use_thread_pool else 'process'} workers)", end="")
             else:
                 print("Run tasks (main thread)", end="")
-            if self._num_tasks:
-                print(": ")
-                self._create_pbar(total=self._num_tasks)
-            else:
-                print(" ...")
+            print(": ")
+            self._create_pbar(total=self._num_tasks)
 
         if self._num_workers > 0:
             if throttling_bandwidth is not None:
@@ -340,6 +338,12 @@ class ProcessPoolExecutorWithProgressBar:
 
     def join(self):
         self._open_for_submit = False
+        if (
+                hasattr(self, '_pbar') and hasattr(self, '_num_tasks') and hasattr(self, '_task_count') and
+                self._pbar is not None and self._num_tasks is None
+        ):
+            self._pbar.total = self._task_count
+            self._pbar.refresh()
         if hasattr(self, '_submitter_throttle') and self._submitter_throttle is not None:
             self._submitter_throttle.join()
         self._close_pbar()
