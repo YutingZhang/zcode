@@ -1,3 +1,4 @@
+import multiprocessing
 import sys
 from typing import Union, Callable, Optional, Type
 from concurrent import futures
@@ -238,6 +239,11 @@ class SubmitterThrottle:
             pass
 
 
+def _wait_for_lock(lock: multiprocessing.Lock):
+    with lock:
+        pass
+
+
 class ProcessPoolExecutorWithProgressBar:
 
     def __init__(
@@ -295,6 +301,18 @@ class ProcessPoolExecutorWithProgressBar:
         self._task_count = 0
 
         self._open_for_submit = True
+
+    def init_all_workers(self):
+        with multiprocessing.Manager() as manager:
+            lock = manager.Lock()
+            all_result = [self._executor.submit(_wait_for_lock, lock) for _ in range(self._num_workers)]
+            time.sleep(1e-4)
+            for r in all_result:
+                r.result()
+
+    @property
+    def internal_executor(self):
+        return self._executor
 
     @property
     def _need_pbar(self):
