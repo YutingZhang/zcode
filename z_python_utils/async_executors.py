@@ -244,6 +244,16 @@ def _wait_for_lock(lock: multiprocessing.Lock):
         pass
 
 
+def run_and_print_out_traceback_if_exception(*args, **kwargs):
+    try:
+        return args[0](*args, **kwargs)
+    except:
+        import traceback
+        print("Error =========================", file=sys.stderr)
+        traceback.print_exc()
+        raise
+
+
 class ProcessPoolExecutorWithProgressBar:
 
     def __init__(
@@ -345,7 +355,7 @@ class ProcessPoolExecutorWithProgressBar:
 
     def submit(self, *args, **kwargs):
         assert self._open_for_submit, "executor is joined/joining"
-        r = self._submit_func(*args, **kwargs)
+        r = self._submit_func(run_and_print_out_traceback_if_exception, *args, **kwargs)
         if self._num_workers <= 0:
             self.done_callback(self._task_count, r)
         self._task_count += 1
