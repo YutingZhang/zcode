@@ -246,10 +246,12 @@ def _wait_for_lock(lock: multiprocessing.Lock):
 
 def run_and_print_out_traceback_if_exception(*args, **kwargs):
     try:
-        return args[0](*args, **kwargs)
-    except:
+        return args[0](*args[1:], **kwargs)
+    except Exception as e:
         import traceback
         print("Error =========================", file=sys.stderr)
+        print(e, file=sys.stderr)
+        print(" ---- Traceback ===============", file=sys.stderr)
         traceback.print_exc()
         raise
 
